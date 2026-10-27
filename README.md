@@ -63,6 +63,12 @@ supabase secrets set PLANT_ID_API_KEY=... PLANTNET_API_KEY=... --project-ref <re
 > Фото в bucket `photos` доступны по прямой ссылке (пути случайные, по UUID). Для личного сада этого достаточно;
 > для чувствительных данных переключите bucket в private и используйте signed URLs.
 
+## Android: установка APK
+
+Каждый push в `main` собирает APK: **Actions → Android APK →** последний запуск → **Artifacts → leafy-apk**.
+Скачайте на телефон, распакуйте zip и установите (разрешите установку из этого источника).
+APK подписан отладочным ключом — для личного использования; для Google Play нужна своя подпись.
+
 ## iPhone без App Store
 
 `.github/workflows/deploy-web.yml` собирает web-версию и публикует на GitHub Pages при каждом push в `main`

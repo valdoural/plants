@@ -1,0 +1,27 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release
+      # Подписано отладочным ключом — подходит для установки на свой телефон, не для Google Play.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leafy-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
