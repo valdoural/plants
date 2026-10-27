@@ -41,6 +41,9 @@ final recognitionServiceProvider = Provider<RecognitionService>((ref) {
 
 /// Единая точка входа: распознавание вида и диагностика.
 /// Запросы идут напрямую с ключом из настроек или через Edge Function `recognize`.
+/// Адрес web-версии — его же нужно указать в my.plantnet.org → Authorized domains.
+const plantNetAppOrigin = 'https://valdoural.github.io';
+
 class RecognitionService {
   RecognitionService(this.settings, this.supabaseReady);
 
@@ -120,6 +123,10 @@ class RecognitionService {
     }
     final uri = Uri.parse(_plantNetBase).replace(queryParameters: {...q, 'api-key': settings.plantNetKey});
     final req = http.MultipartRequest('POST', uri);
+    // Ключ Pl@ntNet с включённым «Expose API key» принимает только запросы с разрешённых сайтов.
+    // В приложении для телефона браузера нет, поэтому представляемся адресом нашего сайта —
+    // тогда один и тот же ключ работает и в web-версии, и в Android/iOS.
+    if (!kIsWeb) req.headers['Origin'] = plantNetAppOrigin;
     for (var i = 0; i < images.length; i++) {
       final mime = imageMimeType(images[i]);
       req.files.add(http.MultipartFile.fromBytes('images', images[i],

@@ -3,122 +3,175 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
+import '../../data/discover/discover_providers.dart';
 import '../../data/models.dart';
+import '../discover/discover_widgets.dart';
 import '../garden/task_tile.dart';
 import '../identify/identify_result_screen.dart';
 import 'seasonal_tips.dart';
 
-/// «Сегодня»: растение, которому нужен уход, — во весь экран, действие прямо на фото.
-/// Ниже — остальные задачи дня, неделя вперёд, недавние распознавания и сезонный совет.
+/// «Сегодня» + «Для вас»: растение, которому нужен уход, задачи, погода с советами,
+/// поиск, тенденции региона и каталог. На телефоне — одна колонка, на больших экранах — две.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(gardenProvider).value ?? const GardenData();
-    final p = context.palette;
     final due = data.dueTasks;
     final upcoming = _upcoming(data);
+    final size = context.windowSize;
+    final g = context.gutter;
+
+    Widget gap([double h = 28]) => SizedBox(height: h);
+
+    final hero = _Hero(data: data, due: due, upcoming: upcoming);
+    final tasks = [
+      if (due.length > 1) ...[
+        const _Heading('Ещё сегодня'),
+        for (final t in due.skip(1)) Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: TaskTile(task: t, plant: data.plant(t.plantId)),
+        ),
+      ],
+    ];
+    final week = upcoming.isEmpty
+        ? const <Widget>[]
+        : [
+            const _Heading('Дальше на неделе'),
+            _TileRow(children: [
+              for (final t in upcoming)
+                _Tile(
+                  photoUrl: data.plant(t.plantId)!.photoUrl,
+                  title: data.plant(t.plantId)!.nickname,
+                  subtitle: '${_verb(t.type)}, ${_weekday(t.nextDue)}',
+                  onTap: () => context.push('/plant/${t.plantId}'),
+                ),
+            ]),
+          ];
     final recent = data.identifications.take(10).toList();
+    final recentBlock = recent.isEmpty
+        ? const <Widget>[]
+        : [
+            _Heading('Недавно распознано', action: 'История', onAction: () => context.push('/history')),
+            _TileRow(children: [
+              for (final r in recent)
+                _Tile(
+                  photoUrl: r.photoUrl,
+                  title: r.top?.displayName ?? 'Не распознано',
+                  subtitle: r.top == null ? r.provider : '${(r.top!.probability * 100).round()}% · ${r.provider}',
+                  onTap: () => context.push('/identify/result', extra: IdentifyResultArgs(record: r)),
+                ),
+            ]),
+          ];
     final tip = seasonalTip(DateTime.now());
-    final screen = MediaQuery.sizeOf(context);
+    final seasonal = _SeasonalTip(tip: tip);
+
+    final left = <Widget>[
+      ...tasks,
+      if (tasks.isNotEmpty) gap(),
+      const PlaceWeatherCard(),
+      gap(),
+      ...week,
+      if (week.isNotEmpty) gap(),
+      seasonal,
+    ];
+    final right = <Widget>[
+      const PlantSearchLauncher(),
+      gap(),
+      TaxonShelf(
+        title: TrendKind.cultivated.title,
+        subtitle: TrendKind.cultivated.subtitle,
+        items: ref.watch(trendsProvider(TrendKind.cultivated)),
+      ),
+      gap(),
+      const CatalogTiles(),
+      gap(),
+      TaxonShelf(
+        title: TrendKind.flowering.title,
+        subtitle: TrendKind.flowering.subtitle,
+        items: ref.watch(trendsProvider(TrendKind.flowering)),
+        onMore: () => context.push('/catalog/flowers'),
+      ),
+      gap(),
+      ...recentBlock,
+    ];
+
+    if (size.isCompact) {
+      return Scaffold(
+        body: RefreshIndicator(
+          onRefresh: () => ref.refresh(gardenProvider.future),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              SizedBox(height: (MediaQuery.sizeOf(context).height * 0.62).clamp(420.0, 580.0), child: hero),
+              Padding(
+                padding: EdgeInsets.fromLTRB(g, 8, g, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _Heading('Для вас'),
+                    // На телефоне порядок: задачи → поиск → регион и советы → тенденции → каталог.
+                    ...tasks,
+                    if (tasks.isNotEmpty) gap(),
+                    const PlantSearchLauncher(),
+                    gap(),
+                    const PlaceWeatherCard(),
+                    gap(),
+                    ...right.skip(2),
+                    ...week,
+                    if (week.isNotEmpty) gap(),
+                    seasonal,
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(gardenProvider.future),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: (screen.height * 0.62).clamp(420.0, 580.0),
-                child: _Hero(data: data, due: due, upcoming: upcoming),
-              ),
-            ),
-            if (due.length > 1) ...[
-              const SliverToBoxAdapter(child: SectionHeader('Ещё сегодня')),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList.separated(
-                  itemCount: due.length - 1,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) => TaskTile(task: due[i + 1], plant: data.plant(due[i + 1].plantId)),
-                ),
-              ),
-            ],
-            if (upcoming.isNotEmpty) ...[
-              const SliverToBoxAdapter(child: SectionHeader('Дальше на неделе')),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 176,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: upcoming.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
-                    itemBuilder: (_, i) {
-                      final t = upcoming[i];
-                      final plant = data.plant(t.plantId)!;
-                      return _Tile(
-                        photoUrl: plant.photoUrl,
-                        title: plant.nickname,
-                        subtitle: '${_verb(t.type)}, ${_weekday(t.nextDue)}',
-                        onTap: () => context.push('/plant/${plant.id}'),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-            if (recent.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: SectionHeader('Недавно распознано', action: 'История', onAction: () => context.push('/history')),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 176,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: recent.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
-                    itemBuilder: (_, i) {
-                      final r = recent[i];
-                      return _Tile(
-                        photoUrl: r.photoUrl,
-                        title: r.top?.displayName ?? 'Не распознано',
-                        subtitle: r.top == null ? r.provider : '${(r.top!.probability * 100).round()}% · ${r.provider}',
-                        onTap: () => context.push('/identify/result', extra: IdentifyResultArgs(record: r)),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-            SliverToBoxAdapter(child: SectionHeader('Совет на ${tip.month}')),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(22)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(tip.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                      for (final line in tip.points)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Text(line, style: TextStyle(fontSize: 15, height: 1.45, color: p.ink)),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(gardenProvider.future),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(g, g, g, 48),
+            children: [
+              MaxWidth(
+                maxWidth: 1320,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Для вас', style: TextStyle(fontSize: size == WindowSize.expanded ? 40 : 32, fontWeight: FontWeight.w800, letterSpacing: -1)),
+                    const SizedBox(height: 20),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                            ClipRRect(borderRadius: BorderRadius.circular(28), child: SizedBox(height: 460, child: hero)),
+                            gap(),
+                            ...left,
+                          ]),
                         ),
-                    ],
-                  ),
+                        SizedBox(width: size == WindowSize.expanded ? 40 : 24),
+                        Expanded(
+                          flex: 7,
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: right),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -130,6 +183,73 @@ class HomeScreen extends ConsumerWidget {
         .where((t) => t.enabled && !t.isDue && t.daysLeft <= 7 && data.plant(t.plantId) != null)
         .toList()
       ..sort((a, b) => a.nextDue.compareTo(b.nextDue));
+  }
+}
+
+class _Heading extends StatelessWidget {
+  const _Heading(this.title, {this.action, this.onAction});
+
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 10),
+      child: Row(children: [
+        Expanded(child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.3))),
+        if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
+      ]),
+    );
+  }
+}
+
+/// Ряд плиток: на телефоне листается вбок, на широком экране переносится.
+class _TileRow extends StatelessWidget {
+  const _TileRow({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (context.windowSize.isCompact) {
+      return SizedBox(
+        height: 176,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: children.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (_, i) => children[i],
+        ),
+      );
+    }
+    return Wrap(spacing: 12, runSpacing: 16, children: children);
+  }
+}
+
+class _SeasonalTip extends StatelessWidget {
+  const _SeasonalTip({required this.tip});
+
+  final SeasonalTip tip;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(22)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Совет на ${tip.month}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: p.accent)),
+          const SizedBox(height: 4),
+          Text(tip.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          for (final line in tip.points)
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(line, style: const TextStyle(fontSize: 15, height: 1.45))),
+        ],
+      ),
+    );
   }
 }
 
