@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/photo_picker.dart';
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/models.dart';
@@ -27,7 +28,12 @@ class PlantDetailScreen extends ConsumerWidget {
     if (plant == null) {
       return Scaffold(appBar: AppBar(), body: const EmptyState(icon: Icons.search_off, title: 'Растение не найдено'));
     }
-    final t = Theme.of(context);
+    final p = context.palette;
+    final heroHeight = (MediaQuery.sizeOf(context).height * 0.5).clamp(320.0, 440.0);
+    final subtitle = [
+      if (plant.scientificName != null) plant.scientificName!,
+      plant.location.label.toLowerCase(),
+    ].join(' · ');
 
     return DefaultTabController(
       length: 3,
@@ -35,30 +41,54 @@ class PlantDetailScreen extends ConsumerWidget {
         body: NestedScrollView(
           headerSliverBuilder: (context, _) => [
             SliverAppBar(
-              expandedHeight: 280,
+              expandedHeight: heroHeight,
               pinned: true,
+              backgroundColor: p.bg,
+              foregroundColor: p.ink,
               actions: [_PlantMenu(plant: plant)],
               flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsetsDirectional.only(start: 56, bottom: 62, end: 56),
-                title: Text(plant.nickname,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, shadows: [Shadow(blurRadius: 8)])),
+                collapseMode: CollapseMode.pin,
                 background: Stack(fit: StackFit.expand, children: [
                   PlantImage(plant.photoUrl, radius: 0),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black54],
+                        colors: [p.bg.withValues(alpha: 0.4), p.bg.withValues(alpha: 0), p.bg.withValues(alpha: 0.9), p.bg],
+                        stops: const [0, 0.3, 0.8, 1],
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: 64,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(plant.nickname,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 34, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
+                        const SizedBox(height: 4),
+                        Text(subtitle, style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: p.ink)),
+                      ],
                     ),
                   ),
                 ]),
               ),
-              bottom: TabBar(
-                tabs: const [Tab(text: 'Уход'), Tab(text: 'Дневник'), Tab(text: 'О растении')],
-                labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-                indicatorColor: t.colorScheme.primary,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: ColoredBox(
+                  color: p.bg,
+                  child: const TabBar(
+                    tabAlignment: TabAlignment.start,
+                    isScrollable: true,
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    tabs: [Tab(text: 'Уход'), Tab(text: 'Дневник'), Tab(text: 'О растении')],
+                  ),
+                ),
               ),
             ),
           ],
@@ -71,6 +101,61 @@ class PlantDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Неделя вперёд: сегодняшний день выделен, точка — в этот день есть уход.
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({required this.tasks});
+
+  final List<CareTask> tasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final days = [for (var i = 0; i < 7; i++) today.add(Duration(days: i))];
+    bool hasTask(DateTime d) => tasks.any((t) {
+          if (!t.enabled) return false;
+          final due = DateTime(t.nextDue.year, t.nextDue.month, t.nextDue.day);
+          return d == today ? !due.isAfter(today) : due == d;
+        });
+    return Row(
+      children: [
+        for (final (i, d) in days.indexed) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: i == 0 ? p.inkButton : p.surface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  Text(DateFormat('EE', 'ru').format(d),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: i == 0 ? FontWeight.w800 : FontWeight.w600,
+                        color: i == 0 ? p.onInkButton : p.inkSecondary,
+                      )),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: hasTask(d) ? (i == 0 ? p.onInkButton : p.accent) : p.surfaceHigh,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -147,6 +232,8 @@ class _CareTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       children: [
+        _WeekStrip(tasks: tasks),
+        const SizedBox(height: 16),
         if (sorted.isEmpty)
           const Padding(
             padding: EdgeInsets.all(24),
@@ -173,7 +260,7 @@ class _CareTab extends ConsumerWidget {
             children: [
               for (final type in missing)
                 ActionChip(
-                  avatar: Icon(careIcon(type), size: 18, color: careColor(type)),
+                  avatar: Icon(careIcon(type), size: 18, color: careColor(context, type)),
                   label: Text('+ ${type.label}'),
                   onPressed: () => ref.read(gardenProvider.notifier).saveTask(CareTask.create(plant.id, type)),
                 ),

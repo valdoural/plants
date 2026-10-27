@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,6 +61,7 @@ class AppSettings {
     this.notificationsEnabled = true,
     this.reminderHour = 9,
     this.reminderMinute = 0,
+    this.themeMode = ThemeMode.system,
   });
 
   final RecognitionProviderId provider;
@@ -79,6 +81,9 @@ class AppSettings {
   final bool notificationsEnabled;
   final int reminderHour;
   final int reminderMinute;
+
+  /// Тема оформления: как в системе, светлая или тёмная.
+  final ThemeMode themeMode;
 
   bool get supabaseConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
@@ -103,6 +108,7 @@ class AppSettings {
     bool? notificationsEnabled,
     int? reminderHour,
     int? reminderMinute,
+    ThemeMode? themeMode,
   }) =>
       AppSettings(
         provider: provider ?? this.provider,
@@ -116,6 +122,7 @@ class AppSettings {
         notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
         reminderHour: reminderHour ?? this.reminderHour,
         reminderMinute: reminderMinute ?? this.reminderMinute,
+        themeMode: themeMode ?? this.themeMode,
       );
 
   static AppSettings load(SharedPreferences p) => AppSettings(
@@ -130,6 +137,7 @@ class AppSettings {
         notificationsEnabled: p.getBool('notificationsEnabled') ?? true,
         reminderHour: p.getInt('reminderHour') ?? 9,
         reminderMinute: p.getInt('reminderMinute') ?? 0,
+        themeMode: ThemeMode.values.asNameMap()[p.getString('themeMode')] ?? ThemeMode.system,
       );
 
   Future<void> save(SharedPreferences p) async {
@@ -144,6 +152,7 @@ class AppSettings {
     await p.setBool('notificationsEnabled', notificationsEnabled);
     await p.setInt('reminderHour', reminderHour);
     await p.setInt('reminderMinute', reminderMinute);
+    await p.setString('themeMode', themeMode.name);
   }
 }
 

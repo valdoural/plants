@@ -157,7 +157,7 @@ class _CareRow extends StatelessWidget {
     final on = days != null;
     return Row(
       children: [
-        Icon(careIcon(type), color: careColor(type)),
+        Icon(careIcon(type), color: careColor(context, type)),
         const SizedBox(width: 12),
         Expanded(child: Text(type.label)),
         if (on)

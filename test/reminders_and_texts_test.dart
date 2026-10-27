@@ -45,6 +45,12 @@ void main() {
       expect(lightSummaryRu(light), contains('рассеянный свет'));
     });
 
+    test('предупреждение о прямом солнце не превращается в рекомендацию', () {
+      expect(lightSummaryRu('Thrives in bright, indirect light; direct sun can scorch the leaves.'),
+          'Яркий рассеянный свет, беречь от полуденного солнца');
+      expect(lightSummaryRu('Prefers full sun.'), 'Прямое солнце');
+    });
+
     test('ядовитость', () {
       expect(toxicitySummaryRu('Toxic to cats and dogs if ingested.'), 'Ядовито для кошек, собак');
       expect(toxicitySummaryRu('This plant is non-toxic to pets.'), 'Не ядовито');

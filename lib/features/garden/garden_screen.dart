@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/models.dart';
@@ -124,55 +125,42 @@ class _PlantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
+    final p = context.palette;
     final next = (tasks.where((x) => x.enabled).toList()..sort((a, b) => a.nextDue.compareTo(b.nextDue))).firstOrNull;
-    return Card(
-      child: InkWell(
-        onTap: () => context.push('/plant/${plant.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  PlantImage(plant.photoUrl, radius: 0),
-                  if (next != null && next.isDue)
-                    Positioned(
-                      left: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: careColor(next.type), borderRadius: BorderRadius.circular(12)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(careIcon(next.type), size: 14, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text(next.type.label,
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                        ]),
-                      ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => context.push('/plant/${plant.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PlantImage(plant.photoUrl, radius: 20),
+                if (next != null && next.isDue)
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: p.inkButton, borderRadius: BorderRadius.circular(14)),
+                      child: Text(next.type.label,
+                          style: TextStyle(color: p.onInkButton, fontSize: 12, fontWeight: FontWeight.w800)),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(plant.nickname,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  if (next != null)
-                    Text('${next.type.label} ${dueLabel(next)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.textTheme.bodySmall?.copyWith(
-                            color: next.daysLeft < 0 ? t.colorScheme.error : t.colorScheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Text(plant.nickname,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          if (next != null)
+            Text('${next.type.label} ${dueLabel(next)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: next.daysLeft < 0 ? p.alert : p.inkSecondary)),
+        ],
       ),
     );
   }

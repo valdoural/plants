@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/models.dart';
@@ -25,7 +26,7 @@ class DiagnoseResultScreen extends ConsumerWidget {
     final r = args.record.result;
     final t = Theme.of(context);
     final healthy = r.isHealthy;
-    final statusColor = healthy ? Colors.green.shade700 : t.colorScheme.tertiary;
+    final statusColor = healthy ? context.palette.accent : context.palette.alert;
     final diseases = r.diseases.where((d) => d.probability >= 0.05).toList();
 
     return Scaffold(

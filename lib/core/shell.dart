@@ -3,36 +3,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/garden_controller.dart';
+import 'theme.dart';
 
-/// Нижняя навигация: Главная · Диагноз · [камера] · Мой сад · Ещё.
+/// Нижняя панель «Витрины»: Сегодня · Сад · [камера] · Диагноз · Ещё.
+/// Вкладки — подписи без иконок; единственная «кнопка» в панели — камера.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
+  // Порядок веток в роутере: 0 — сегодня, 1 — диагноз, 2 — сад, 3 — ещё.
+  static const _today = 0, _diagnose = 1, _garden = 2, _more = 3;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final due = ref.watch(gardenProvider).value?.dueTasks.length ?? 0;
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
 
-    Widget item(int index, IconData icon, IconData selectedIcon, String label, {int badge = 0}) {
-      final selected = shell.currentIndex == index;
-      final color = selected ? scheme.primary : scheme.onSurfaceVariant;
+    Widget tab(int branch, String label, {int badge = 0}) {
+      final selected = shell.currentIndex == branch;
       return Expanded(
-        child: InkResponse(
-          onTap: () => shell.goBranch(index, initialLocation: index == shell.currentIndex),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Badge(
-                isLabelVisible: badge > 0,
-                label: Text('$badge'),
-                child: Icon(selected ? selectedIcon : icon, color: color),
+        child: Semantics(
+          selected: selected,
+          button: true,
+          child: InkResponse(
+            onTap: () => shell.goBranch(branch, initialLocation: branch == shell.currentIndex),
+            radius: 36,
+            child: SizedBox(
+              height: 56,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected ? p.accent : p.inkSecondary,
+                      ),
+                    ),
+                    if (badge > 0) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(10)),
+                        child: Text('$badge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: p.bg)),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(fontSize: 12, color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-            ],
+            ),
           ),
         ),
       );
@@ -40,27 +62,39 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       body: shell,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton.large(
-        heroTag: 'identify',
-        tooltip: 'Распознать растение',
-        shape: const CircleBorder(),
-        onPressed: () => context.push('/identify'),
-        child: const Icon(Icons.center_focus_strong, size: 36),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        height: 72,
-        padding: EdgeInsets.zero,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: Row(
-          children: [
-            item(0, Icons.home_outlined, Icons.home, 'Главная', badge: due),
-            item(1, Icons.healing_outlined, Icons.healing, 'Диагноз'),
-            const SizedBox(width: 96),
-            item(2, Icons.local_florist_outlined, Icons.local_florist, 'Мой сад'),
-            item(3, Icons.more_horiz, Icons.more_horiz, 'Ещё'),
-          ],
+      bottomNavigationBar: Material(
+        color: p.bar,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+            child: Row(
+              children: [
+                tab(_today, 'Сегодня', badge: due),
+                tab(_garden, 'Сад'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Tooltip(
+                    message: 'Распознать растение',
+                    child: Material(
+                      color: p.inkButton,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => context.push('/identify'),
+                        child: SizedBox.square(
+                          dimension: 56,
+                          child: Icon(Icons.center_focus_weak, size: 28, color: p.onInkButton),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                tab(_diagnose, 'Диагноз'),
+                tab(_more, 'Ещё'),
+              ],
+            ),
+          ),
         ),
       ),
     );

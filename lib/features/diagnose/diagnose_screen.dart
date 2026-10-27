@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/photo_picker.dart';
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/recognition/recognition_service.dart';
@@ -100,7 +101,7 @@ class _DiagnoseScreenState extends ConsumerState<DiagnoseScreen> {
                     subtitle: Text(fmt.format(d.createdAt)),
                     trailing: Icon(
                       d.result.isHealthy ? Icons.check_circle : Icons.error_outline,
-                      color: d.result.isHealthy ? Colors.green : t.colorScheme.tertiary,
+                      color: d.result.isHealthy ? context.palette.accent : context.palette.alert,
                     ),
                     onTap: () => context.push('/diagnose/result', extra: DiagnoseResultArgs(record: d)),
                   ),

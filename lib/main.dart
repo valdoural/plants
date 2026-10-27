@@ -46,17 +46,17 @@ Future<void> main() async {
   ));
 }
 
-class LeafyApp extends StatefulWidget {
+class LeafyApp extends ConsumerStatefulWidget {
   const LeafyApp({super.key, required this.showOnboarding, this.startupWarning});
 
   final bool showOnboarding;
   final String? startupWarning;
 
   @override
-  State<LeafyApp> createState() => _LeafyAppState();
+  ConsumerState<LeafyApp> createState() => _LeafyAppState();
 }
 
-class _LeafyAppState extends State<LeafyApp> {
+class _LeafyAppState extends ConsumerState<LeafyApp> {
   late final _router = buildRouter(showOnboarding: widget.showOnboarding);
   final _messenger = GlobalKey<ScaffoldMessengerState>();
 
@@ -78,6 +78,7 @@ class _LeafyAppState extends State<LeafyApp> {
       scaffoldMessengerKey: _messenger,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
+      themeMode: ref.watch(settingsProvider.select((s) => s.themeMode)),
       locale: const Locale('ru'),
       supportedLocales: const [Locale('ru'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

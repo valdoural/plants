@@ -22,11 +22,12 @@ class PlantImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final placeholder = Container(
       width: size,
       height: size,
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Icon(Icons.local_florist, color: Theme.of(context).colorScheme.primary, size: (size ?? 64) * 0.45),
+      color: p.surfaceHigh,
+      child: Icon(Icons.local_florist_outlined, color: p.inkSecondary, size: (size ?? 64) * 0.4),
     );
     final u = url;
     Widget child;
@@ -60,10 +61,10 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 12, 8),
+      padding: const EdgeInsets.fromLTRB(24, 28, 12, 10),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20))),
           if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
         ],
       ),
@@ -88,13 +89,9 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: t.colorScheme.primaryContainer,
-              child: Icon(icon, size: 40, color: t.colorScheme.primary),
-            ),
+            Icon(icon, size: 48, color: context.palette.inkSecondary),
             const SizedBox(height: 16),
-            Text(title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+            Text(title, style: t.textTheme.headlineSmall?.copyWith(fontSize: 24), textAlign: TextAlign.center),
             if (message != null) ...[
               const SizedBox(height: 8),
               Text(message!, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
@@ -107,7 +104,7 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Плашка уверенности распознавания: зелёная/жёлтая/оранжевая.
+/// Уверенность распознавания: акцентом, когда уверенно, приглушённо — когда нет.
 class ConfidenceBadge extends StatelessWidget {
   const ConfidenceBadge(this.probability, {super.key});
 
@@ -116,16 +113,14 @@ class ConfidenceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = (probability * 100).clamp(0, 100).round();
-    final color = probability >= 0.7
-        ? LeafyColors.forest
-        : probability >= 0.3
-            ? const Color(0xFFB8860B)
-            : LeafyColors.terracotta;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-      child: Text('$pct%', style: TextStyle(color: color, fontWeight: FontWeight.w700)),
-    );
+    final p = context.palette;
+    return Text('$pct%',
+        style: TextStyle(
+          color: probability >= 0.5 ? p.accent : p.inkSecondary,
+          fontWeight: FontWeight.w800,
+          fontSize: 16,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ));
   }
 }
 
@@ -138,14 +133,9 @@ IconData careIcon(CareType type) => switch (type) {
       CareType.rotate => Icons.wb_sunny,
     };
 
-Color careColor(CareType type) => switch (type) {
-      CareType.water => LeafyColors.water,
-      CareType.fertilize => LeafyColors.moss,
-      CareType.mist => const Color(0xFF5BA4A4),
-      CareType.repot => LeafyColors.terracotta,
-      CareType.prune => const Color(0xFF7A6A9C),
-      CareType.rotate => const Color(0xFFD4A017),
-    };
+/// Цветом выделяется только вода; остальной уход различается подписью и значком.
+Color careColor(BuildContext context, CareType type) =>
+    type == CareType.water ? context.palette.water : context.palette.inkSecondary;
 
 String dueLabel(CareTask t) {
   final d = t.daysLeft;

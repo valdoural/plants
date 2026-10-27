@@ -33,8 +33,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final last = _index == _slides.length - 1;
+    final p = context.palette;
     return Scaffold(
-      backgroundColor: LeafyColors.forest,
+      backgroundColor: p.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -42,7 +43,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () => _finish('/'),
-                child: const Text('Пропустить', style: TextStyle(color: Colors.white70)),
+                child: Text('Пропустить', style: TextStyle(color: p.inkSecondary)),
               ),
             ),
             Expanded(
@@ -56,19 +57,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircleAvatar(
-                            radius: 72,
-                            backgroundColor: Colors.white.withValues(alpha: 0.12),
-                            child: Icon(icon, size: 72, color: Colors.white),
-                          ),
+                          Icon(icon, size: 96, color: p.accent),
                           const SizedBox(height: 40),
                           Text(title,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
+                              style: const TextStyle(fontSize: 32, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
                           const SizedBox(height: 16),
                           Text(text,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70, fontSize: 17, height: 1.4)),
+                              style: TextStyle(color: p.inkSecondary, fontSize: 17, height: 1.4)),
                         ],
                       ),
                     ),
@@ -85,7 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     width: i == _index ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: i == _index ? Colors.white : Colors.white38,
+                      color: i == _index ? p.ink : p.surfaceHigh,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -96,7 +93,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: LeafyColors.forest),
                   onPressed: last
                       ? () => _finish('/settings')
                       : () => _pages.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut),

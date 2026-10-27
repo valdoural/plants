@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/notifications.dart';
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 
@@ -45,6 +46,17 @@ class SettingsScreen extends ConsumerWidget {
                 'для диагностики болезней и советов по уходу. Сервис можно переключать прямо на экране камеры.',
               ),
             ),
+          ),
+          const SectionHeader('Оформление'),
+          SegmentedButton<ThemeMode>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('Как в системе')),
+              ButtonSegment(value: ThemeMode.light, label: Text('Светлая')),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Тёмная')),
+            ],
+            selected: {s.themeMode},
+            onSelectionChanged: (v) => ctrl.update((x) => x.copyWith(themeMode: v.first)),
           ),
           const SectionHeader('Уведомления'),
           const _NotificationsCard(),
@@ -131,10 +143,10 @@ class _ProviderCardState extends State<ProviderCard> {
                 Icon(widget.selected ? Icons.radio_button_checked : Icons.radio_button_off, color: t.colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(child: Text(p.title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
-                if (widget.apiKey.isNotEmpty) const Icon(Icons.vpn_key, size: 18, color: Colors.green),
+                if (widget.apiKey.isNotEmpty) Icon(Icons.vpn_key, size: 18, color: context.palette.accent),
               ]),
               const SizedBox(height: 10),
-              for (final s in p.pros) _Point(icon: Icons.check, color: Colors.green.shade700, text: s),
+              for (final s in p.pros) _Point(icon: Icons.check, color: context.palette.accent, text: s),
               for (final s in p.cons) _Point(icon: Icons.info_outline, color: t.colorScheme.tertiary, text: s),
               const SizedBox(height: 12),
               TextField(
@@ -214,7 +226,7 @@ class _SupabaseCardState extends ConsumerState<_SupabaseCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
-              Icon(widget.ready ? Icons.cloud_done : Icons.cloud_off, color: widget.ready ? Colors.green : null),
+              Icon(widget.ready ? Icons.cloud_done : Icons.cloud_off, color: widget.ready ? context.palette.accent : null),
               const SizedBox(width: 8),
               Expanded(child: Text('Сейчас данные хранятся: $storage')),
             ]),

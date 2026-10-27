@@ -12,7 +12,8 @@ String? lightSummaryRu(String? text) {
   if (isRussian(text)) return text;
   final t = text.toLowerCase();
   final parts = <String>[
-    if (t.contains('full sun') || t.contains('direct sun')) 'прямое солнце',
+    // «direct sun» в описании рассеянного света обычно звучит как предупреждение, а не рекомендация.
+    if (t.contains('full sun') || (t.contains('direct sun') && !t.contains('indirect'))) 'прямое солнце',
     if (t.contains('indirect') || t.contains('bright light') || t.contains('filtered')) 'яркий рассеянный свет',
     if (t.contains('partial') || t.contains('part shade') || t.contains('semi-shade')) 'полутень',
     if (t.contains('low light') || t.contains('full shade') || t.contains('deep shade')) 'выносит слабый свет',
