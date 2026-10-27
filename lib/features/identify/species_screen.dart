@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets.dart';
+import '../../data/care_text_ru.dart';
 import '../../data/models.dart';
 import '../garden/add_plant_sheet.dart';
 
@@ -121,36 +122,57 @@ class SpeciesCareFacts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = candidate;
-    final facts = <(IconData, String, String)>[
-      (Icons.water_drop, 'Полив', c.wateringLevel == null ? 'нет данных' : everyLabel(c.suggestedWateringDays)),
-      if (c.light != null) (Icons.wb_sunny, 'Свет', c.light!),
-      if (c.soil != null) (Icons.grass, 'Почва', c.soil!),
-      if (c.toxicity != null) (Icons.warning_amber, 'Ядовитость', c.toxicity!),
+    // (иконка, заголовок, кратко по-русски, полный текст сервиса если он на другом языке)
+    final facts = <(IconData, String, String, String?)>[
+      (Icons.water_drop, 'Полив', c.wateringLevel == null ? 'нет данных' : everyLabel(c.suggestedWateringDays), null),
+      if (c.light != null) _fact(Icons.wb_sunny, 'Свет', c.light!, lightSummaryRu(c.light)),
+      if (c.soil != null) _fact(Icons.grass, 'Почва', c.soil!, soilSummaryRu(c.soil)),
+      if (c.toxicity != null) _fact(Icons.warning_amber, 'Ядовитость', c.toxicity!, toxicitySummaryRu(c.toxicity)),
     ];
     if (c.wateringLevel == null && facts.length == 1) {
-      return Card(
+      return const Card(
         child: ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: const Text('Советы по уходу недоступны'),
-          subtitle: const Text('Этот сервис возвращает только вид. Для советов по уходу используйте Plant.id.'),
+          leading: Icon(Icons.info_outline),
+          title: Text('Советы по уходу недоступны'),
+          subtitle: Text('Этот сервис возвращает только вид. Для советов по уходу используйте Plant.id.'),
         ),
       );
     }
     return Column(
       children: [
-        for (final (icon, title, value) in facts)
+        for (final (icon, title, value, details) in facts)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Card(
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(icon)),
-                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(value),
-              ),
+              child: details == null
+                  ? ListTile(
+                      leading: CircleAvatar(child: Icon(icon)),
+                      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(value),
+                    )
+                  : ExpansionTile(
+                      shape: const Border(),
+                      leading: CircleAvatar(child: Icon(icon)),
+                      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(value),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Подробнее (англ.)', style: Theme.of(context).textTheme.labelMedium),
+                        const SizedBox(height: 4),
+                        Text(details, style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
             ),
           ),
       ],
     );
+  }
+
+  /// Если сервис ответил не по-русски — показываем краткую сводку, а оригинал прячем в «подробнее».
+  static (IconData, String, String, String?) _fact(IconData icon, String title, String raw, String? summary) {
+    if (isRussian(raw)) return (icon, title, raw, null);
+    return (icon, title, summary ?? 'Описание на английском', raw);
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/reminder_scheduler.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
 import 'core/theme.dart';
@@ -81,6 +82,7 @@ class _LeafyAppState extends State<LeafyApp> {
       supportedLocales: const [Locale('ru'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: _router,
+      builder: (_, child) => ReminderScheduler(child: child!),
     );
   }
 }

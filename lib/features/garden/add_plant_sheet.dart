@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/notifications.dart';
 import '../../core/photo_picker.dart';
+import '../../core/settings.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/models.dart';
@@ -54,6 +57,10 @@ class _AddPlantSheetState extends ConsumerState<_AddPlantSheet> {
             location: _location,
             care: _care,
           );
+      // Первое растение — подходящий момент спросить разрешение на напоминания.
+      if (ref.read(settingsProvider).notificationsEnabled) {
+        unawaited(ReminderNotifications.instance.requestPermission());
+      }
       if (mounted) Navigator.pop(context, plant);
     } catch (e) {
       if (mounted) {

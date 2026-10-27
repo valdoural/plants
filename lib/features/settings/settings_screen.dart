@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/notifications.dart';
 import '../../core/settings.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
@@ -45,6 +46,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SectionHeader('Уведомления'),
+          const _NotificationsCard(),
           const SectionHeader('Язык результатов'),
           SegmentedButton<String>(
             segments: const [
@@ -246,6 +249,60 @@ class _SupabaseCardState extends ConsumerState<_SupabaseCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+class _NotificationsCard extends ConsumerWidget {
+  const _NotificationsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(settingsProvider);
+    final ctrl = ref.read(settingsProvider.notifier);
+    if (!ReminderNotifications.supported) {
+      return const Card(
+        child: ListTile(
+          leading: Icon(Icons.notifications_off_outlined),
+          title: Text('В браузере уведомления по расписанию недоступны'),
+          subtitle: Text('Задачи на сегодня видны на главной и в счётчике на вкладке. '
+              'В приложении для Android и iOS придёт ежедневная сводка.'),
+        ),
+      );
+    }
+    final time = TimeOfDay(hour: s.reminderHour, minute: s.reminderMinute);
+    return Card(
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: s.notificationsEnabled,
+            title: const Text('Ежедневная сводка ухода'),
+            subtitle: const Text('Одно уведомление в день: что полить, подкормить, пересадить'),
+            onChanged: (v) async {
+              if (v && !await ReminderNotifications.instance.requestPermission()) {
+                if (context.mounted) {
+                  showError(context, 'Уведомления запрещены. Разрешите их для Leafy в настройках телефона.');
+                }
+                return;
+              }
+              await ctrl.update((x) => x.copyWith(notificationsEnabled: v));
+            },
+          ),
+          ListTile(
+            enabled: s.notificationsEnabled,
+            leading: const Icon(Icons.schedule),
+            title: const Text('Время'),
+            trailing: Text(time.format(context), style: Theme.of(context).textTheme.titleMedium),
+            onTap: () async {
+              final picked = await showTimePicker(context: context, initialTime: time);
+              if (picked != null) {
+                await ctrl.update((x) => x.copyWith(reminderHour: picked.hour, reminderMinute: picked.minute));
+              }
+            },
+          ),
+        ],
       ),
     );
   }
