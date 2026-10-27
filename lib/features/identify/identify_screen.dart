@@ -213,7 +213,7 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                           overlay: Padding(
                             padding: const EdgeInsets.all(28),
                             child: CustomPaint(
-                              painter: _CornersPainter(p.accent),
+                              painter: _CornersPainter(Colors.white70),
                             ),
                           ),
                           onUnavailable: (_) =>
