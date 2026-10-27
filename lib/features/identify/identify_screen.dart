@@ -32,13 +32,24 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     if (bytes != null && mounted) setState(() => _photos.add(bytes));
   }
 
-  Future<void> _identify() async {
+  Future<void> _identify({RecognitionProviderId? provider}) async {
     setState(() => _busy = true);
     try {
-      final result = await ref.read(recognitionServiceProvider).identify(_photos, organ: _organ);
+      final result = await ref.read(recognitionServiceProvider).identify(_photos, organ: _organ, provider: provider);
       final record = await ref.read(gardenProvider.notifier).addIdentification(result, _photos.first);
       if (!mounted) return;
       context.pushReplacement('/identify/result', extra: IdentifyResultArgs(record: record, photo: _photos.first));
+    } on RecognitionException catch (e) {
+      if (!mounted) return;
+      final settings = ref.read(settingsProvider);
+      final canRetry = e.provider == RecognitionProviderId.plantNet && settings.hasKeyFor(RecognitionProviderId.plantId);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+        duration: const Duration(seconds: 10),
+        action: canRetry
+            ? SnackBarAction(label: 'Через Plant.id', onPressed: () => _identify(provider: RecognitionProviderId.plantId))
+            : null,
+      ));
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {

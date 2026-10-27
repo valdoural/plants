@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:typed_data';
+
 import 'package:leafy/data/models.dart';
+import 'package:leafy/data/recognition/recognition_service.dart';
 
 void main() {
   test('новая задача ухода — на сегодня', () {
@@ -44,5 +47,11 @@ void main() {
     final t2 = CareTask.fromJson(task.toJson());
     expect(t2.type, CareType.fertilize);
     expect(t2.daysLeft, task.daysLeft);
+  });
+
+  test('тип фото определяется по содержимому', () {
+    expect(imageMimeType(Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0])), 'image/jpeg');
+    expect(imageMimeType(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A])), 'image/png');
+    expect(imageMimeType(Uint8List.fromList([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63])), 'image/heic');
   });
 }

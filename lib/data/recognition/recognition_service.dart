@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/settings.dart';
@@ -24,8 +26,11 @@ enum PlantOrgan {
 }
 
 class RecognitionException implements Exception {
-  RecognitionException(this.message);
+  RecognitionException(this.message, {this.provider});
   final String message;
+
+  /// Какой сервис не ответил — чтобы предложить попробовать другой.
+  final RecognitionProviderId? provider;
   @override
   String toString() => message;
 }
@@ -87,7 +92,7 @@ class RecognitionService {
     }
   }
 
-  String _dataUri(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(bytes)}';
+  String _dataUri(Uint8List bytes) => 'data:${imageMimeType(bytes)};base64,${base64Encode(bytes)}';
 
   Future<Map<String, dynamic>> _plantIdPost(String endpoint, Map<String, String> query, Map<String, dynamic> body) async {
     final q = {...query, 'language': settings.language};
@@ -95,7 +100,7 @@ class RecognitionService {
       return _invokeProxy({'provider': 'plantid', 'endpoint': endpoint, 'query': q, 'body': body});
     }
     final uri = Uri.parse('$_plantIdBase/$endpoint').replace(queryParameters: q);
-    final res = await _send(() => http.post(
+    final res = await _send(RecognitionProviderId.plantId, () => http.post(
           uri,
           headers: {'Api-Key': settings.plantIdKey, 'Content-Type': 'application/json'},
           body: jsonEncode(body),
@@ -116,10 +121,12 @@ class RecognitionService {
     final uri = Uri.parse(_plantNetBase).replace(queryParameters: {...q, 'api-key': settings.plantNetKey});
     final req = http.MultipartRequest('POST', uri);
     for (var i = 0; i < images.length; i++) {
-      req.files.add(http.MultipartFile.fromBytes('images', images[i], filename: 'photo$i.jpg'));
+      final mime = imageMimeType(images[i]);
+      req.files.add(http.MultipartFile.fromBytes('images', images[i],
+          filename: 'photo$i.${mime.split('/').last}', contentType: MediaType.parse(mime)));
       req.files.add(http.MultipartFile.fromString('organs', organ.name));
     }
-    final res = await _send(() async => http.Response.fromStream(await req.send()));
+    final res = await _send(RecognitionProviderId.plantNet, () async => http.Response.fromStream(await req.send()));
     if (res.statusCode == 404) return {'results': []}; // «Species not found»
     return _decode(res, 'Pl@ntNet');
   }
@@ -133,30 +140,49 @@ class RecognitionService {
     }
   }
 
-  Future<http.Response> _send(Future<http.Response> Function() call) async {
+  Future<http.Response> _send(RecognitionProviderId id, Future<http.Response> Function() call) async {
     try {
-      return await call().timeout(const Duration(seconds: 60));
-    } on http.ClientException catch (e) {
+      return await call().timeout(const Duration(seconds: 45));
+    } on TimeoutException {
       throw RecognitionException(
-          'Нет связи с сервисом (${e.message}). В браузере это часто ограничение CORS — включите режим «Через сервер» в настройках.');
+          '${id.short} долго не отвечает. Проверьте интернет и попробуйте ещё раз — или другой сервис.',
+          provider: id);
+    } on http.ClientException {
+      // В браузере отказ по CORS выглядит как обрыв связи — для Pl@ntNet это почти всегда неразрешённый домен.
+      if (kIsWeb && id == RecognitionProviderId.plantNet) throw _plantNetDomain();
+      throw RecognitionException('Нет связи с ${id.short}. Проверьте интернет и попробуйте ещё раз.', provider: id);
     }
   }
 
+  RecognitionException _plantNetDomain() => RecognitionException(
+        'Pl@ntNet не разрешает запросы с этого сайта. На my.plantnet.org → Settings → Authorized domains '
+        'добавьте «${Uri.base.host}» — или распознайте через Plant.id.',
+        provider: RecognitionProviderId.plantNet,
+      );
+
   Map<String, dynamic> _decode(http.Response res, String name) {
-    if (kIsWeb && name == 'Pl@ntNet' && res.statusCode == 403) {
-      throw RecognitionException(
-          'Pl@ntNet не разрешает запросы с этого сайта. Добавьте домен «${Uri.base.host}» в my.plantnet.org → '
-          'Settings → Authorized domains (или включите «Распознавать через сервер»).');
-    }
+    final id = name == 'Pl@ntNet' ? RecognitionProviderId.plantNet : RecognitionProviderId.plantId;
+    if (kIsWeb && id == RecognitionProviderId.plantNet && res.statusCode == 403) throw _plantNetDomain();
     if (res.statusCode == 401 || res.statusCode == 403) {
-      throw RecognitionException('$name отклонил ключ (${res.statusCode}). Проверьте API-ключ в настройках.');
+      throw RecognitionException('$name отклонил ключ (${res.statusCode}). Проверьте API-ключ в настройках.', provider: id);
     }
     if (res.statusCode == 429) {
-      throw RecognitionException('$name: исчерпан лимит запросов. Попробуйте позже или переключите сервис.');
+      throw RecognitionException('$name: исчерпан лимит запросов. Попробуйте позже или переключите сервис.', provider: id);
     }
     if (res.statusCode >= 400) {
-      throw RecognitionException('$name вернул ошибку ${res.statusCode}: ${utf8.decode(res.bodyBytes)}');
+      throw RecognitionException('$name вернул ошибку ${res.statusCode}: ${utf8.decode(res.bodyBytes)}', provider: id);
     }
     return Map<String, dynamic>.from(jsonDecode(utf8.decode(res.bodyBytes)) as Map);
   }
+}
+
+/// Тип картинки по первым байтам: браузер может отдать JPEG, PNG, WebP или HEIC.
+String imageMimeType(Uint8List b) {
+  bool at(int offset, List<int> sig) =>
+      b.length >= offset + sig.length && [for (var i = 0; i < sig.length; i++) b[offset + i] == sig[i]].every((x) => x);
+  if (at(0, [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+  if (at(0, [0x89, 0x50, 0x4E, 0x47])) return 'image/png';
+  if (at(0, [0x52, 0x49, 0x46, 0x46]) && at(8, [0x57, 0x45, 0x42, 0x50])) return 'image/webp';
+  if (at(4, [0x66, 0x74, 0x79, 0x70])) return 'image/heic'; // ftyp…: HEIC/HEIF
+  return 'image/jpeg';
 }
