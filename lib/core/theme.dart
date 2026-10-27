@@ -244,7 +244,8 @@ ThemeData buildTheme(Brightness brightness) {
       contentTextStyle: TextStyle(fontFamily: _font, color: p.onInkButton, fontWeight: FontWeight.w600),
       actionTextColor: p.onInkButton,
       behavior: SnackBarBehavior.floating,
-      shape: const StadiumBorder(),
+      // Сообщения бывают в несколько строк — «таблетка» их уродует.
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: p.accent),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
