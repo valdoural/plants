@@ -38,7 +38,13 @@ class PlantImage extends StatelessWidget {
       child = Image.memory(base64Decode(u.substring(u.indexOf(',') + 1)),
           width: size, height: size, fit: fit, gaplessPlayback: true);
     } else {
-      child = Image.network(u, width: size, height: size, fit: fit, errorBuilder: (_, _, _) => placeholder);
+      // В браузере картинки чужих CDN грузим через <img>: так не мешает CORS.
+      child = Image.network(u,
+          width: size,
+          height: size,
+          fit: fit,
+          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+          errorBuilder: (_, _, _) => placeholder);
     }
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
   }

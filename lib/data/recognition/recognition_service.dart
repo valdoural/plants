@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -142,6 +143,11 @@ class RecognitionService {
   }
 
   Map<String, dynamic> _decode(http.Response res, String name) {
+    if (kIsWeb && name == 'Pl@ntNet' && res.statusCode == 403) {
+      throw RecognitionException(
+          'Pl@ntNet не разрешает запросы с этого сайта. Добавьте домен «${Uri.base.host}» в my.plantnet.org → '
+          'Settings → Authorized domains (или включите «Распознавать через сервер»).');
+    }
     if (res.statusCode == 401 || res.statusCode == 403) {
       throw RecognitionException('$name отклонил ключ (${res.statusCode}). Проверьте API-ключ в настройках.');
     }
