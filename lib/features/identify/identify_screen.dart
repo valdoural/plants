@@ -5,17 +5,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/live_camera.dart';
 import '../../core/photo_picker.dart';
 import '../../core/settings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/recognition/recognition_service.dart';
+import '../diagnose/diagnose_result_screen.dart';
 import 'identify_result_screen.dart';
 
-/// Съёмка/выбор фото → распознавание. Видоискатель во весь экран, спуск в центре.
+enum CameraMode { identify, diagnose }
+
+/// Съёмка → распознавание (или диагностика). Живой видоискатель, спуск в центре, галерея слева.
 class IdentifyScreen extends ConsumerStatefulWidget {
-  const IdentifyScreen({super.key});
+  const IdentifyScreen({super.key, this.mode = CameraMode.identify});
+
+  final CameraMode mode;
 
   @override
   ConsumerState<IdentifyScreen> createState() => _IdentifyScreenState();
@@ -23,33 +29,93 @@ class IdentifyScreen extends ConsumerStatefulWidget {
 
 class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   static const _maxPhotos = 3;
+  final _camera = GlobalKey<LiveCameraState>();
   final _photos = <Uint8List>[];
   var _organ = PlantOrgan.auto;
   var _busy = false;
 
-  Future<void> _add(ImageSource source) async {
-    final bytes = await pickPhoto(source);
-    if (bytes != null && mounted) setState(() => _photos.add(bytes));
+  /// Показывать живую камеру (а не последний снимок).
+  var _live = true;
+  var _cameraFailed = false;
+
+  bool get _diagnose => widget.mode == CameraMode.diagnose;
+  int get _limit => _diagnose ? 1 : _maxPhotos;
+
+  Future<void> _gallery() async {
+    final bytes = await pickPhoto(ImageSource.gallery);
+    if (bytes != null && mounted) {
+      setState(() {
+        _photos.add(bytes);
+        _live = false;
+      });
+    }
   }
 
-  Future<void> _identify({RecognitionProviderId? provider}) async {
+  Future<void> _shoot() async {
+    final cam = _camera.currentState;
+    Uint8List? bytes;
+    if (cam != null && cam.isReady) {
+      bytes = await cam.capture();
+    } else {
+      // Камеры в браузере нет или доступ запрещён — системный выбор фото (на телефоне откроет камеру).
+      bytes = await pickPhoto(ImageSource.camera);
+    }
+    if (bytes != null && mounted) {
+      setState(() {
+        _photos.add(bytes!);
+        _live = false;
+      });
+    }
+  }
+
+  Future<void> _submit({RecognitionProviderId? provider}) async {
     setState(() => _busy = true);
     try {
-      final result = await ref.read(recognitionServiceProvider).identify(_photos, organ: _organ, provider: provider);
-      final record = await ref.read(gardenProvider.notifier).addIdentification(result, _photos.first);
+      if (_diagnose) {
+        final result = await ref.read(recognitionServiceProvider).diagnose([
+          _photos.first,
+        ]);
+        final record = await ref
+            .read(gardenProvider.notifier)
+            .addDiagnosis(result, _photos.first);
+        if (!mounted) return;
+        context.pushReplacement(
+          '/diagnose/result',
+          extra: DiagnoseResultArgs(record: record, photo: _photos.first),
+        );
+        return;
+      }
+      final result = await ref
+          .read(recognitionServiceProvider)
+          .identify(_photos, organ: _organ, provider: provider);
+      final record = await ref
+          .read(gardenProvider.notifier)
+          .addIdentification(result, _photos.first);
       if (!mounted) return;
-      context.pushReplacement('/identify/result', extra: IdentifyResultArgs(record: record, photo: _photos.first));
+      context.pushReplacement(
+        '/identify/result',
+        extra: IdentifyResultArgs(record: record, photo: _photos.first),
+      );
     } on RecognitionException catch (e) {
       if (!mounted) return;
       final settings = ref.read(settingsProvider);
-      final canRetry = e.provider == RecognitionProviderId.plantNet && settings.hasKeyFor(RecognitionProviderId.plantId);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.message),
-        duration: const Duration(seconds: 10),
-        action: canRetry
-            ? SnackBarAction(label: 'Через Plant.id', onPressed: () => _identify(provider: RecognitionProviderId.plantId))
-            : null,
-      ));
+      final canRetry =
+          !_diagnose &&
+          e.provider == RecognitionProviderId.plantNet &&
+          settings.hasKeyFor(RecognitionProviderId.plantId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          duration: const Duration(seconds: 10),
+          action: canRetry
+              ? SnackBarAction(
+                  label: 'Через Plant.id',
+                  onPressed: () =>
+                      _submit(provider: RecognitionProviderId.plantId),
+                )
+              : null,
+        ),
+      );
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
@@ -61,8 +127,12 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final p = context.palette;
-    final hasKey = settings.hasKeyFor(settings.provider);
-    final full = _photos.length >= _maxPhotos;
+    final hasKey = _diagnose
+        ? settings.canDiagnose
+        : settings.hasKeyFor(settings.provider);
+    final full = _photos.length >= _limit;
+    final showLive = _live && !full;
+    final cam = _camera.currentState;
 
     return Scaffold(
       body: SafeArea(
@@ -72,28 +142,63 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
               padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
               child: Row(
                 children: [
-                  IconButton(tooltip: 'Закрыть', onPressed: () => context.pop(), icon: const Icon(Icons.close)),
-                  const Expanded(child: Text('Распознать', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-                  Material(
-                    color: p.surface,
-                    shape: const StadiumBorder(),
-                    child: InkWell(
-                      customBorder: const StadiumBorder(),
-                      onTap: () => _chooseProvider(context, settings),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(settings.provider.short, style: const TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 4),
-                          Icon(Icons.expand_more, size: 18, color: p.inkSecondary),
-                        ]),
+                  IconButton(
+                    tooltip: 'Закрыть',
+                    onPressed: () => context.pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _diagnose ? 'Диагностика' : 'Распознать',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
+                  if (!_diagnose)
+                    PressScale(
+                      child: Material(
+                        color: p.surface,
+                        shape: const StadiumBorder(),
+                        child: InkWell(
+                          customBorder: const StadiumBorder(),
+                          onTap: () => _chooseProvider(context, settings),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  settings.provider.short,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.expand_more,
+                                  size: 18,
+                                  color: p.inkSecondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (!hasKey) _MissingKey(provider: settings.provider),
+            if (!hasKey)
+              _MissingKey(
+                provider: _diagnose
+                    ? RecognitionProviderId.plantId
+                    : settings.provider,
+              ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -102,30 +207,97 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (_photos.isEmpty)
-                        ColoredBox(color: p.surface, child: _Viewfinder(color: p.accent, hint: p.inkSecondary))
+                      if (showLive)
+                        LiveCamera(
+                          key: _camera,
+                          overlay: Padding(
+                            padding: const EdgeInsets.all(28),
+                            child: CustomPaint(
+                              painter: _CornersPainter(p.accent),
+                            ),
+                          ),
+                          onUnavailable: (_) =>
+                              setState(() => _cameraFailed = true),
+                        )
+                      else if (_photos.isNotEmpty)
+                        PlantImage.memory(_photos.last, radius: 0)
                       else
-                        PlantImage.memory(_photos.last, radius: 0),
+                        ColoredBox(
+                          color: p.surface,
+                          child: _Viewfinder(
+                            color: p.accent,
+                            hint: p.inkSecondary,
+                          ),
+                        ),
+                      if (showLive && cam != null && cam.isReady)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Column(
+                            children: [
+                              if (cam.canSwitch)
+                                _RoundIcon(
+                                  icon: Icons.cameraswitch_outlined,
+                                  tooltip: 'Сменить камеру',
+                                  onTap: () async {
+                                    await cam.switchCamera();
+                                    setState(() {});
+                                  },
+                                ),
+                              if (cam.hasFlash) ...[
+                                const SizedBox(height: 8),
+                                _RoundIcon(
+                                  icon: cam.flashOn
+                                      ? Icons.flash_on
+                                      : Icons.flash_off,
+                                  tooltip: 'Подсветка',
+                                  onTap: () async {
+                                    await cam.toggleFlash();
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       if (_busy)
-                        const ColoredBox(
+                        ColoredBox(
                           color: Colors.black54,
                           child: Center(
-                            child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              CircularProgressIndicator(color: Colors.white),
-                              SizedBox(height: 14),
-                              Text('Сравниваем с базой растений…',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                            ]),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  _diagnose
+                                      ? 'Ищем признаки болезней…'
+                                      : 'Сравниваем с базой растений…',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       if (_photos.isNotEmpty)
                         Positioned(
                           left: 12,
-                          right: 12,
                           bottom: 12,
+                          right: 80,
                           child: _Thumbs(
                             photos: _photos,
-                            onRemove: _busy ? null : (i) => setState(() => _photos.removeAt(i)),
+                            onRemove: _busy
+                                ? null
+                                : (i) => setState(() {
+                                    _photos.removeAt(i);
+                                    if (_photos.isEmpty) _live = true;
+                                  }),
                           ),
                         ),
                     ],
@@ -133,7 +305,8 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                 ),
               ),
             ),
-            if (settings.provider == RecognitionProviderId.plantNet)
+            if (!_diagnose &&
+                settings.provider == RecognitionProviderId.plantNet)
               SizedBox(
                 height: 56,
                 child: ListView(
@@ -155,46 +328,80 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: _photos.isEmpty
+              child: showLive
                   ? Row(
                       children: [
                         Expanded(
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: OutlinedButton.icon(
-                              onPressed: () => _add(ImageSource.gallery),
+                              onPressed: _busy ? null : _gallery,
                               icon: const Icon(Icons.photo_library_outlined),
                               label: const Text('Галерея'),
                             ),
                           ),
                         ),
-                        _Shutter(onPressed: () => _add(ImageSource.camera)),
+                        _Shutter(onPressed: _busy ? null : _shoot),
                         Expanded(
                           child: Align(
                             alignment: Alignment.centerRight,
-                            child: TextButton(onPressed: () => _showTips(context), child: const Text('Как снимать')),
+                            child: _photos.isNotEmpty
+                                ? TextButton(
+                                    onPressed: () =>
+                                        setState(() => _live = false),
+                                    child: const Text('Готово'),
+                                  )
+                                : TextButton(
+                                    onPressed: () => _showTips(context),
+                                    child: const Text('Как снимать'),
+                                  ),
                           ),
                         ),
                       ],
                     )
                   : Row(
                       children: [
-                        IconButton.filledTonal(
-                          tooltip: full ? 'Не больше $_maxPhotos фото' : 'Добавить ещё фото',
-                          style: IconButton.styleFrom(backgroundColor: p.surface, minimumSize: const Size(54, 54)),
-                          onPressed: full || _busy ? null : () => _add(ImageSource.camera),
-                          icon: const Icon(Icons.add_a_photo_outlined),
-                        ),
-                        const SizedBox(width: 10),
+                        if (!full)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: IconButton.filledTonal(
+                              tooltip: 'Добавить ещё фото',
+                              style: IconButton.styleFrom(
+                                backgroundColor: p.surface,
+                                minimumSize: const Size(54, 54),
+                              ),
+                              onPressed: _busy
+                                  ? null
+                                  : () => setState(() => _live = true),
+                              icon: const Icon(Icons.add_a_photo_outlined),
+                            ),
+                          ),
                         Expanded(
                           child: FilledButton(
-                            onPressed: _busy || !hasKey ? null : _identify,
-                            child: Text(_busy ? 'Распознаём…' : 'Распознать'),
+                            onPressed: _busy || !hasKey || _photos.isEmpty
+                                ? null
+                                : _submit,
+                            child: Text(
+                              _busy
+                                  ? (_diagnose ? 'Анализируем…' : 'Распознаём…')
+                                  : (_diagnose
+                                        ? 'Проверить здоровье'
+                                        : 'Распознать'),
+                            ),
                           ),
                         ),
                       ],
                     ),
             ),
+            if (_cameraFailed && showLive)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Text(
+                  'Кнопка спуска откроет системную съёмку или выбор фото.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: p.inkSecondary),
+                ),
+              ),
           ],
         ),
       ),
@@ -204,13 +411,19 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   void _showTips(BuildContext context) {
     final p = context.palette;
     Widget tip(String title, String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 2),
-            Text(text, style: TextStyle(fontSize: 15, color: p.inkSecondary)),
-          ]),
-        );
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 2),
+          Text(text, style: TextStyle(fontSize: 15, color: p.inkSecondary)),
+        ],
+      ),
+    );
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
@@ -220,11 +433,23 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Как сделать хорошее фото', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              const Text(
+                'Как сделать хорошее фото',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 16),
-              tip('Одно растение в кадре', 'Растение в центре и в фокусе, занимает большую часть кадра.'),
-              tip('Цветок или лист крупно', 'Это самые узнаваемые части. Добавьте 2–3 фото с разных сторон.'),
-              tip('Мягкий свет', 'Без сильных теней и бликов; у окна днём — идеально.'),
+              tip(
+                'Одно растение в кадре',
+                'Растение в центре и в фокусе, занимает большую часть кадра.',
+              ),
+              tip(
+                'Цветок или лист крупно',
+                'Это самые узнаваемые части. Добавьте 2–3 фото с разных сторон.',
+              ),
+              tip(
+                'Мягкий свет',
+                'Без сильных теней и бликов; у окна днём — идеально.',
+              ),
             ],
           ),
         ),
@@ -232,7 +457,10 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
     );
   }
 
-  Future<void> _chooseProvider(BuildContext context, AppSettings settings) async {
+  Future<void> _chooseProvider(
+    BuildContext context,
+    AppSettings settings,
+  ) async {
     final p = context.palette;
     final chosen = await showModalBottomSheet<RecognitionProviderId>(
       context: context,
@@ -242,10 +470,19 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
           children: [
             for (final id in RecognitionProviderId.values)
               ListTile(
-                leading: Icon(id == settings.provider ? Icons.radio_button_checked : Icons.radio_button_off,
-                    color: id == settings.provider ? p.accent : p.inkSecondary),
-                title: Text(id.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(settings.hasKeyFor(id) ? id.pros.first : 'Ключ не задан'),
+                leading: Icon(
+                  id == settings.provider
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: id == settings.provider ? p.accent : p.inkSecondary,
+                ),
+                title: Text(
+                  id.title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  settings.hasKeyFor(id) ? id.pros.first : 'Ключ не задан',
+                ),
                 onTap: () => Navigator.pop(context, id),
               ),
             const SizedBox(height: 8),
@@ -253,7 +490,11 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
         ),
       ),
     );
-    if (chosen != null) await ref.read(settingsProvider.notifier).update((s) => s.copyWith(provider: chosen));
+    if (chosen != null) {
+      await ref
+          .read(settingsProvider.notifier)
+          .update((s) => s.copyWith(provider: chosen));
+    }
   }
 }
 
@@ -261,7 +502,7 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
 class _Shutter extends StatelessWidget {
   const _Shutter({required this.onPressed});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -269,14 +510,22 @@ class _Shutter extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Сфотографировать',
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          width: 78,
-          height: 78,
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: p.ink, width: 4)),
-          child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: p.ink)),
+      child: PressScale(
+        scale: 0.9,
+        child: GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: 78,
+            height: 78,
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: p.ink, width: 4),
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(shape: BoxShape.circle, color: p.ink),
+            ),
+          ),
         ),
       ),
     );
@@ -295,18 +544,31 @@ class _Viewfinder extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Padding(padding: const EdgeInsets.all(36), child: CustomPaint(painter: _CornersPainter(color))),
+        Padding(
+          padding: const EdgeInsets.all(36),
+          child: CustomPaint(painter: _CornersPainter(color)),
+        ),
         Center(
           child: Padding(
             padding: const EdgeInsets.all(48),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.eco_outlined, size: 56, color: color),
-              const SizedBox(height: 14),
-              const Text('Наведите камеру на растение',
-                  textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Text('Лучше всего — цветок или лист крупным планом', textAlign: TextAlign.center, style: TextStyle(color: hint)),
-            ]),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.eco_outlined, size: 56, color: color),
+                const SizedBox(height: 14),
+                const Text(
+                  'Наведите камеру на растение',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Лучше всего — цветок или лист крупным планом',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: hint),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -328,7 +590,12 @@ class _CornersPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     const l = 36.0;
     final w = size.width, h = size.height;
-    for (final (x, y, dx, dy) in [(0.0, 0.0, 1.0, 1.0), (w, 0.0, -1.0, 1.0), (0.0, h, 1.0, -1.0), (w, h, -1.0, -1.0)]) {
+    for (final (x, y, dx, dy) in [
+      (0.0, 0.0, 1.0, 1.0),
+      (w, 0.0, -1.0, 1.0),
+      (0.0, h, 1.0, -1.0),
+      (w, h, -1.0, -1.0),
+    ]) {
       canvas.drawPath(
         Path()
           ..moveTo(x, y + dy * l)
@@ -378,7 +645,12 @@ class _Thumbs extends StatelessWidget {
                         onTap: () => onRemove!(i),
                         child: const Padding(
                           padding: EdgeInsets.all(4),
-                          child: Icon(Icons.close, size: 14, color: Colors.white, semanticLabel: 'Убрать фото'),
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: Colors.white,
+                            semanticLabel: 'Убрать фото',
+                          ),
                         ),
                       ),
                     ),
@@ -409,16 +681,57 @@ class _MissingKey extends StatelessWidget {
           onTap: () => context.push('/settings'),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Нужен API-ключ ${provider.short}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text('Добавьте его в настройках — пара минут.', style: TextStyle(color: p.inkSecondary)),
-                ]),
-              ),
-              Icon(Icons.chevron_right, color: p.inkSecondary),
-            ]),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Нужен API-ключ ${provider.short}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Добавьте его в настройках — пара минут.',
+                        style: TextStyle(color: p.inkSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: p.inkSecondary),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  const _RoundIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      child: Material(
+        color: Colors.black54,
+        shape: const CircleBorder(),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          icon: Icon(icon, color: Colors.white),
         ),
       ),
     );

@@ -18,13 +18,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   var _index = 0;
 
   static const _slides = [
-    (Icons.center_focus_strong, 'Узнайте любое растение', 'Сфотографируйте цветок, лист или дерево — Leafy подскажет, что это за вид.'),
-    (Icons.healing, 'Поймите, что с ним не так', 'Пятна, жёлтые листья, вредители — фото поможет найти причину и способ лечения.'),
-    (Icons.water_drop, 'Не забывайте ухаживать', 'Полив, подкормка, пересадка — напоминания для каждого растения в вашем саду.'),
+    (
+      Icons.center_focus_strong,
+      'Узнайте любое растение',
+      'Сфотографируйте цветок, лист или дерево — Leafy подскажет, что это за вид.',
+    ),
+    (
+      Icons.healing,
+      'Поймите, что с ним не так',
+      'Пятна, жёлтые листья, вредители — фото поможет найти причину и способ лечения.',
+    ),
+    (
+      Icons.water_drop,
+      'Не забывайте ухаживать',
+      'Полив, подкормка, пересадка — напоминания для каждого растения в вашем саду.',
+    ),
   ];
 
   Future<void> _finish(String route) async {
-    await ref.read(settingsProvider.notifier).update((s) => s.copyWith(onboardingDone: true));
+    await ref
+        .read(settingsProvider.notifier)
+        .update((s) => s.copyWith(onboardingDone: true));
     if (!mounted) return;
     context.go('/');
     if (route != '/') context.push(route);
@@ -43,7 +57,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () => _finish('/'),
-                child: Text('Пропустить', style: TextStyle(color: p.inkSecondary)),
+                child: Text(
+                  'Пропустить',
+                  style: TextStyle(color: p.inkSecondary),
+                ),
               ),
             ),
             Expanded(
@@ -59,13 +76,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         children: [
                           Icon(icon, size: 96, color: p.accent),
                           const SizedBox(height: 40),
-                          Text(title,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 32, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 32,
+                              height: 1.1,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.8,
+                            ),
+                          ),
                           const SizedBox(height: 16),
-                          Text(text,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: p.inkSecondary, fontSize: 17, height: 1.4)),
+                          Text(
+                            text,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: p.inkSecondary,
+                              fontSize: 17,
+                              height: 1.4,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -95,7 +125,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: FilledButton(
                   onPressed: last
                       ? () => _finish('/settings')
-                      : () => _pages.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut),
+                      : () => _pages.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        ),
                   child: Text(last ? 'Настроить распознавание' : 'Далее'),
                 ),
               ),

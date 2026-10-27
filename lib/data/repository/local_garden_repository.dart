@@ -25,29 +25,40 @@ class LocalGardenRepository implements GardenRepository {
   List<Map<String, dynamic>> _read(String key) {
     final raw = _prefs.getString(key);
     if (raw == null) return [];
-    return (jsonDecode(raw) as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return (jsonDecode(raw) as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
-  Future<void> _upsert(String key, Map<String, dynamic> item, {int? keepLast}) async {
+  Future<void> _upsert(
+    String key,
+    Map<String, dynamic> item, {
+    int? keepLast,
+  }) async {
     final items = _read(key)..removeWhere((e) => e['id'] == item['id']);
     items.insert(0, item);
-    if (keepLast != null && items.length > keepLast) items.removeRange(keepLast, items.length);
+    if (keepLast != null && items.length > keepLast) {
+      items.removeRange(keepLast, items.length);
+    }
     await _prefs.setString(key, jsonEncode(items));
   }
 
-  Future<void> _delete(String key, bool Function(Map<String, dynamic>) test) async {
+  Future<void> _delete(
+    String key,
+    bool Function(Map<String, dynamic>) test,
+  ) async {
     final items = _read(key)..removeWhere(test);
     await _prefs.setString(key, jsonEncode(items));
   }
 
   @override
   Future<GardenData> load() async => GardenData(
-        plants: _read(_plants).map(Plant.fromJson).toList(),
-        tasks: _read(_tasks).map(CareTask.fromJson).toList(),
-        notes: _read(_notes).map(Note.fromJson).toList(),
-        identifications: _read(_idents).map(IdentificationRecord.fromJson).toList(),
-        diagnoses: _read(_diags).map(DiagnosisRecord.fromJson).toList(),
-      );
+    plants: _read(_plants).map(Plant.fromJson).toList(),
+    tasks: _read(_tasks).map(CareTask.fromJson).toList(),
+    notes: _read(_notes).map(Note.fromJson).toList(),
+    identifications: _read(_idents).map(IdentificationRecord.fromJson).toList(),
+    diagnoses: _read(_diags).map(DiagnosisRecord.fromJson).toList(),
+  );
 
   @override
   Future<void> savePlant(Plant plant) => _upsert(_plants, plant.toJson());
@@ -73,17 +84,22 @@ class LocalGardenRepository implements GardenRepository {
 
   // История ограничена, чтобы не упереться в лимит localStorage (~5 МБ).
   @override
-  Future<void> saveIdentification(IdentificationRecord record) => _upsert(_idents, record.toJson(), keepLast: 30);
+  Future<void> saveIdentification(IdentificationRecord record) =>
+      _upsert(_idents, record.toJson(), keepLast: 30);
 
   @override
-  Future<void> deleteIdentification(String id) => _delete(_idents, (e) => e['id'] == id);
+  Future<void> deleteIdentification(String id) =>
+      _delete(_idents, (e) => e['id'] == id);
 
   @override
-  Future<void> saveDiagnosis(DiagnosisRecord record) => _upsert(_diags, record.toJson(), keepLast: 20);
+  Future<void> saveDiagnosis(DiagnosisRecord record) =>
+      _upsert(_diags, record.toJson(), keepLast: 20);
 
   @override
-  Future<void> deleteDiagnosis(String id) => _delete(_diags, (e) => e['id'] == id);
+  Future<void> deleteDiagnosis(String id) =>
+      _delete(_diags, (e) => e['id'] == id);
 
   @override
-  Future<String> storePhoto(Uint8List jpegBytes) async => 'data:image/jpeg;base64,${base64Encode(jpegBytes)}';
+  Future<String> storePhoto(Uint8List jpegBytes) async =>
+      'data:image/jpeg;base64,${base64Encode(jpegBytes)}';
 }

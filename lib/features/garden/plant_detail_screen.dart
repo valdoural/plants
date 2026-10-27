@@ -24,12 +24,23 @@ class PlantDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(gardenProvider).value;
     final plant = data?.plant(plantId);
-    if (data == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (data == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (plant == null) {
-      return Scaffold(appBar: AppBar(), body: const EmptyState(icon: Icons.search_off, title: 'Растение не найдено'));
+      return Scaffold(
+        appBar: AppBar(),
+        body: const EmptyState(
+          icon: Icons.search_off,
+          title: 'Растение не найдено',
+        ),
+      );
     }
     final p = context.palette;
-    final heroHeight = (MediaQuery.sizeOf(context).height * 0.5).clamp(320.0, 440.0);
+    final heroHeight = (MediaQuery.sizeOf(context).height * 0.5).clamp(
+      320.0,
+      440.0,
+    );
     final subtitle = [
       if (plant.scientificName != null) plant.scientificName!,
       plant.location.label.toLowerCase(),
@@ -48,35 +59,57 @@ class PlantDetailScreen extends ConsumerWidget {
               actions: [_PlantMenu(plant: plant)],
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.pin,
-                background: Stack(fit: StackFit.expand, children: [
-                  PlantImage(plant.photoUrl, radius: 0),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [p.bg.withValues(alpha: 0.4), p.bg.withValues(alpha: 0), p.bg.withValues(alpha: 0.9), p.bg],
-                        stops: const [0, 0.3, 0.8, 1],
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PlantImage(plant.photoUrl, radius: 0),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            p.bg.withValues(alpha: 0.4),
+                            p.bg.withValues(alpha: 0),
+                            p.bg.withValues(alpha: 0.9),
+                            p.bg,
+                          ],
+                          stops: const [0, 0.3, 0.8, 1],
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 24,
-                    right: 24,
-                    bottom: 64,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(plant.nickname,
+                    Positioned(
+                      left: 24,
+                      right: 24,
+                      bottom: 64,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            plant.nickname,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 34, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
-                        const SizedBox(height: 4),
-                        Text(subtitle, style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: p.ink)),
-                      ],
+                            style: const TextStyle(
+                              fontSize: 34,
+                              height: 1.1,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              color: p.ink,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ),
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(48),
@@ -86,7 +119,11 @@ class PlantDetailScreen extends ConsumerWidget {
                     tabAlignment: TabAlignment.start,
                     isScrollable: true,
                     padding: EdgeInsets.symmetric(horizontal: 12),
-                    tabs: [Tab(text: 'Уход'), Tab(text: 'Дневник'), Tab(text: 'О растении')],
+                    tabs: [
+                      Tab(text: 'Уход'),
+                      Tab(text: 'Дневник'),
+                      Tab(text: 'О растении'),
+                    ],
                   ),
                 ),
               ),
@@ -118,10 +155,10 @@ class _WeekStrip extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final days = [for (var i = 0; i < 7; i++) today.add(Duration(days: i))];
     bool hasTask(DateTime d) => tasks.any((t) {
-          if (!t.enabled) return false;
-          final due = DateTime(t.nextDue.year, t.nextDue.month, t.nextDue.day);
-          return d == today ? !due.isAfter(today) : due == d;
-        });
+      if (!t.enabled) return false;
+      final due = DateTime(t.nextDue.year, t.nextDue.month, t.nextDue.day);
+      return d == today ? !due.isAfter(today) : due == d;
+    });
     return Row(
       children: [
         for (final (i, d) in days.indexed) ...[
@@ -135,19 +172,23 @@ class _WeekStrip extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Text(DateFormat('EE', 'ru').format(d),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: i == 0 ? FontWeight.w800 : FontWeight.w600,
-                        color: i == 0 ? p.onInkButton : p.inkSecondary,
-                      )),
+                  Text(
+                    DateFormat('EE', 'ru').format(d),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: i == 0 ? FontWeight.w800 : FontWeight.w600,
+                      color: i == 0 ? p.onInkButton : p.inkSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Container(
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: hasTask(d) ? (i == 0 ? p.onInkButton : p.accent) : p.surfaceHigh,
+                      color: hasTask(d)
+                          ? (i == 0 ? p.onInkButton : p.accent)
+                          : p.surfaceHigh,
                     ),
                   ),
                 ],
@@ -173,19 +214,33 @@ class _PlantMenu extends ConsumerWidget {
         switch (v) {
           case 'rename':
             final name = await _ask(context, 'Новое имя', plant.nickname);
-            if (name != null && name.isNotEmpty) await garden.updatePlant(plant.copyWith(nickname: name));
+            if (name != null && name.isNotEmpty) {
+              await garden.updatePlant(plant.copyWith(nickname: name));
+            }
           case 'photo':
             final bytes = await pickPhotoWithSheet(context, maxSide: 900);
-            if (bytes != null) await garden.updatePlant(plant.copyWith(photoUrl: await garden.storePhoto(bytes)));
+            if (bytes != null) {
+              await garden.updatePlant(
+                plant.copyWith(photoUrl: await garden.storePhoto(bytes)),
+              );
+            }
           case 'delete':
             final ok = await showDialog<bool>(
               context: context,
               builder: (c) => AlertDialog(
                 title: Text('Удалить «${plant.nickname}»?'),
-                content: const Text('Напоминания и записи дневника тоже удалятся.'),
+                content: const Text(
+                  'Напоминания и записи дневника тоже удалятся.',
+                ),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Отмена')),
-                  FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Удалить')),
+                  TextButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const Text('Отмена'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(c, true),
+                    child: const Text('Удалить'),
+                  ),
                 ],
               ),
             );
@@ -212,8 +267,14 @@ Future<String?> _ask(BuildContext context, String title, String initial) {
       title: Text(title),
       content: TextField(controller: c, autofocus: true),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Сохранить')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, c.text.trim()),
+          child: const Text('Сохранить'),
+        ),
       ],
     ),
   );
@@ -228,7 +289,9 @@ class _CareTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sorted = [...tasks]..sort((a, b) => a.nextDue.compareTo(b.nextDue));
-    final missing = CareType.values.where((c) => !tasks.any((t) => t.type == c)).toList();
+    final missing = CareType.values
+        .where((c) => !tasks.any((t) => t.type == c))
+        .toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       children: [
@@ -237,7 +300,10 @@ class _CareTab extends ConsumerWidget {
         if (sorted.isEmpty)
           const Padding(
             padding: EdgeInsets.all(24),
-            child: Text('Напоминаний нет. Добавьте полив или другой уход ниже.', textAlign: TextAlign.center),
+            child: Text(
+              'Напоминаний нет. Добавьте полив или другой уход ниже.',
+              textAlign: TextAlign.center,
+            ),
           ),
         for (final task in sorted)
           Padding(
@@ -250,8 +316,11 @@ class _CareTab extends ConsumerWidget {
         if (sorted.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 12),
-            child: Text('Удерживайте задачу, чтобы изменить интервал или удалить.',
-                style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+            child: Text(
+              'Удерживайте задачу, чтобы изменить интервал или удалить.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ),
         if (missing.isNotEmpty)
           Wrap(
@@ -260,9 +329,15 @@ class _CareTab extends ConsumerWidget {
             children: [
               for (final type in missing)
                 ActionChip(
-                  avatar: Icon(careIcon(type), size: 18, color: careColor(context, type)),
+                  avatar: Icon(
+                    careIcon(type),
+                    size: 18,
+                    color: careColor(context, type),
+                  ),
                   label: Text('+ ${type.label}'),
-                  onPressed: () => ref.read(gardenProvider.notifier).saveTask(CareTask.create(plant.id, type)),
+                  onPressed: () => ref
+                      .read(gardenProvider.notifier)
+                      .saveTask(CareTask.create(plant.id, type)),
                 ),
             ],
           ),
@@ -270,7 +345,11 @@ class _CareTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _editTask(BuildContext context, WidgetRef ref, CareTask task) async {
+  Future<void> _editTask(
+    BuildContext context,
+    WidgetRef ref,
+    CareTask task,
+  ) async {
     var days = task.intervalDays;
     final garden = ref.read(gardenProvider.notifier);
     final result = await showModalBottomSheet<String>(
@@ -283,16 +362,30 @@ class _CareTab extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(task.type.label, style: Theme.of(ctx).textTheme.titleLarge),
+                Text(
+                  task.type.label,
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 12),
-                Row(children: [
-                  const Expanded(child: Text('Интервал')),
-                  IntervalStepper(days: days, onChanged: (v) => setState(() => days = v)),
-                ]),
+                Row(
+                  children: [
+                    const Expanded(child: Text('Интервал')),
+                    IntervalStepper(
+                      days: days,
+                      onChanged: (v) => setState(() => days = v),
+                    ),
+                  ],
+                ),
                 Text(everyLabel(days), textAlign: TextAlign.end),
                 const SizedBox(height: 16),
-                FilledButton(onPressed: () => Navigator.pop(ctx, 'save'), child: const Text('Сохранить')),
-                TextButton(onPressed: () => Navigator.pop(ctx, 'delete'), child: const Text('Удалить напоминание')),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, 'save'),
+                  child: const Text('Сохранить'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 'delete'),
+                  child: const Text('Удалить напоминание'),
+                ),
               ],
             ),
           ),
@@ -333,13 +426,19 @@ class _NotesTab extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (n.photoUrl != null) SizedBox(height: 200, child: PlantImage(n.photoUrl, radius: 0)),
+                          if (n.photoUrl != null)
+                            SizedBox(
+                              height: 200,
+                              child: PlantImage(n.photoUrl, radius: 0),
+                            ),
                           ListTile(
                             title: Text(n.text),
                             subtitle: Text(fmt.format(n.createdAt)),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline),
-                              onPressed: () => ref.read(gardenProvider.notifier).deleteNote(n.id),
+                              onPressed: () => ref
+                                  .read(gardenProvider.notifier)
+                                  .deleteNote(n.id),
                             ),
                           ),
                         ],
@@ -371,7 +470,12 @@ class _NotesTab extends ConsumerWidget {
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.viewInsetsOf(ctx).bottom + 16),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.viewInsetsOf(ctx).bottom + 16,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -384,25 +488,33 @@ class _NotesTab extends ConsumerWidget {
                 decoration: const InputDecoration(hintText: 'Что нового?'),
               ),
               const SizedBox(height: 12),
-              if (photo != null) SizedBox(height: 120, child: PlantImage.memory(photo!)),
-              Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                  onPressed: () async {
-                    final p = await pickPhotoWithSheet(ctx, maxSide: 900);
-                    if (p != null) setState(() => photo = p);
-                  },
-                ),
-                const Spacer(),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Сохранить')),
-              ]),
+              if (photo != null)
+                SizedBox(height: 120, child: PlantImage.memory(photo!)),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    onPressed: () async {
+                      final p = await pickPhotoWithSheet(ctx, maxSide: 900);
+                      if (p != null) setState(() => photo = p);
+                    },
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Сохранить'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
     if (ok == true && (text.text.trim().isNotEmpty || photo != null)) {
-      await ref.read(gardenProvider.notifier).addNote(plant.id, text.text.trim(), photo: photo);
+      await ref
+          .read(gardenProvider.notifier)
+          .addNote(plant.id, text.text.trim(), photo: photo);
     }
   }
 }
@@ -420,33 +532,51 @@ class _InfoTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Card(
-          child: Column(children: [
-            ListTile(
-              leading: const Icon(Icons.badge_outlined),
-              title: Text(plant.commonName ?? plant.nickname),
-              subtitle: plant.scientificName == null
-                  ? null
-                  : Text(plant.scientificName!, style: const TextStyle(fontStyle: FontStyle.italic)),
-            ),
-            ListTile(leading: const Icon(Icons.place_outlined), title: Text(plant.location.label)),
-            ListTile(
-              leading: const Icon(Icons.event_outlined),
-              title: Text('В саду с ${DateFormat('d MMMM y', 'ru').format(plant.createdAt)}'),
-            ),
-          ]),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.badge_outlined),
+                title: Text(plant.commonName ?? plant.nickname),
+                subtitle: plant.scientificName == null
+                    ? null
+                    : Text(
+                        plant.scientificName!,
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.place_outlined),
+                title: Text(plant.location.label),
+              ),
+              ListTile(
+                leading: const Icon(Icons.event_outlined),
+                title: Text(
+                  'В саду с ${DateFormat('d MMMM y', 'ru').format(plant.createdAt)}',
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         if (s != null) ...[
           SpeciesCareFacts(candidate: s),
           if (s.description != null) ...[
             const SizedBox(height: 12),
-            Text('Описание', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              'Описание',
+              style: t.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(s.description!),
           ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => context.push('/species', extra: SpeciesArgs(candidate: s, photoUrl: plant.photoUrl)),
+            onPressed: () => context.push(
+              '/species',
+              extra: SpeciesArgs(candidate: s, photoUrl: plant.photoUrl),
+            ),
             icon: const Icon(Icons.local_florist_outlined),
             label: const Text('Карточка вида'),
           ),
@@ -455,7 +585,9 @@ class _InfoTab extends StatelessWidget {
             child: ListTile(
               leading: Icon(Icons.info_outline),
               title: Text('Вид не указан'),
-              subtitle: Text('Растение добавлено вручную. Распознайте его по фото, чтобы получить сведения о виде.'),
+              subtitle: Text(
+                'Растение добавлено вручную. Распознайте его по фото, чтобы получить сведения о виде.',
+              ),
             ),
           ),
       ],

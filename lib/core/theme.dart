@@ -133,20 +133,54 @@ ThemeData buildTheme(Brightness brightness) {
     onInverseSurface: p.bg,
   );
 
-  final base = ThemeData(colorScheme: scheme, useMaterial3: true, brightness: brightness, fontFamily: _font);
-  final text = base.textTheme.apply(bodyColor: p.ink, displayColor: p.ink).copyWith(
-        displaySmall: base.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1, color: p.ink),
-        headlineMedium: base.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8, color: p.ink),
-        headlineSmall: base.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5, color: p.ink),
-        titleLarge: base.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: p.ink),
-        titleMedium: base.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: p.ink),
-        bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 17, height: 1.4, color: p.ink),
-        bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 15, height: 1.4, color: p.ink),
+  final base = ThemeData(
+    colorScheme: scheme,
+    useMaterial3: true,
+    brightness: brightness,
+    fontFamily: _font,
+  );
+  final text = base.textTheme
+      .apply(bodyColor: p.ink, displayColor: p.ink)
+      .copyWith(
+        displaySmall: base.textTheme.displaySmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1,
+          color: p.ink,
+        ),
+        headlineMedium: base.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.8,
+          color: p.ink,
+        ),
+        headlineSmall: base.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+          color: p.ink,
+        ),
+        titleLarge: base.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: p.ink,
+        ),
+        titleMedium: base.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: p.ink,
+        ),
+        bodyLarge: base.textTheme.bodyLarge?.copyWith(
+          fontSize: 17,
+          height: 1.4,
+          color: p.ink,
+        ),
+        bodyMedium: base.textTheme.bodyMedium?.copyWith(
+          fontSize: 15,
+          height: 1.4,
+          color: p.ink,
+        ),
       );
   const pill = StadiumBorder();
 
   return base.copyWith(
     extensions: [p],
+    splashFactory: InkRipple.splashFactory,
     textTheme: text,
     scaffoldBackgroundColor: p.bg,
     appBarTheme: AppBarTheme(
@@ -164,7 +198,10 @@ ThemeData buildTheme(Brightness brightness) {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
     ),
-    listTileTheme: ListTileThemeData(iconColor: p.inkSecondary, textColor: p.ink),
+    listTileTheme: ListTileThemeData(
+      iconColor: p.inkSecondary,
+      textColor: p.ink,
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: p.inkButton,
@@ -173,7 +210,11 @@ ThemeData buildTheme(Brightness brightness) {
         disabledForegroundColor: p.inkSecondary,
         minimumSize: const Size(48, 54),
         shape: pill,
-        textStyle: const TextStyle(fontFamily: _font, fontWeight: FontWeight.w700, fontSize: 17),
+        textStyle: const TextStyle(
+          fontFamily: _font,
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -183,28 +224,49 @@ ThemeData buildTheme(Brightness brightness) {
         side: BorderSide.none,
         minimumSize: const Size(48, 50),
         shape: pill,
-        textStyle: const TextStyle(fontFamily: _font, fontWeight: FontWeight.w600, fontSize: 16),
+        textStyle: const TextStyle(
+          fontFamily: _font,
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: p.accent,
-        textStyle: const TextStyle(fontFamily: _font, fontWeight: FontWeight.w700, fontSize: 15),
+        textStyle: const TextStyle(
+          fontFamily: _font,
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+        ),
       ),
     ),
-    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: p.ink)),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(foregroundColor: p.ink),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: p.surface,
       hintStyle: TextStyle(color: p.inkSecondary),
       labelStyle: TextStyle(color: p.inkSecondary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: p.surface,
       selectedColor: p.inkButton,
-      labelStyle: TextStyle(fontFamily: _font, color: p.ink, fontWeight: FontWeight.w600),
-      secondaryLabelStyle: TextStyle(fontFamily: _font, color: p.onInkButton, fontWeight: FontWeight.w700),
+      labelStyle: TextStyle(
+        fontFamily: _font,
+        color: p.ink,
+        fontWeight: FontWeight.w600,
+      ),
+      secondaryLabelStyle: TextStyle(
+        fontFamily: _font,
+        color: p.onInkButton,
+        fontWeight: FontWeight.w700,
+      ),
       checkmarkColor: p.onInkButton,
       side: BorderSide.none,
       shape: const StadiumBorder(),
@@ -220,8 +282,13 @@ ThemeData buildTheme(Brightness brightness) {
       ),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.onInkButton : p.inkSecondary),
-      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? p.inkButton : p.surfaceHigh),
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) =>
+            s.contains(WidgetState.selected) ? p.onInkButton : p.inkSecondary,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? p.inkButton : p.surfaceHigh,
+      ),
       trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
     ),
     tabBarTheme: TabBarThemeData(
@@ -229,19 +296,33 @@ ThemeData buildTheme(Brightness brightness) {
       unselectedLabelColor: p.inkSecondary,
       indicatorColor: p.accent,
       dividerColor: Colors.transparent,
-      labelStyle: const TextStyle(fontFamily: _font, fontWeight: FontWeight.w700, fontSize: 15),
-      unselectedLabelStyle: const TextStyle(fontFamily: _font, fontWeight: FontWeight.w600, fontSize: 15),
+      labelStyle: const TextStyle(
+        fontFamily: _font,
+        fontWeight: FontWeight.w700,
+        fontSize: 15,
+      ),
+      unselectedLabelStyle: const TextStyle(
+        fontFamily: _font,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       showDragHandle: true,
       backgroundColor: p.bg,
       dragHandleColor: p.surfaceHigh,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
     ),
     dialogTheme: DialogThemeData(backgroundColor: p.surface),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: p.inkButton,
-      contentTextStyle: TextStyle(fontFamily: _font, color: p.onInkButton, fontWeight: FontWeight.w600),
+      contentTextStyle: TextStyle(
+        fontFamily: _font,
+        color: p.onInkButton,
+        fontWeight: FontWeight.w600,
+      ),
       actionTextColor: p.onInkButton,
       behavior: SnackBarBehavior.floating,
       // Сообщения бывают в несколько строк — «таблетка» их уродует.

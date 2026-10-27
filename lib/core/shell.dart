@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'widgets.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,7 +24,8 @@ class AppShell extends ConsumerWidget {
     (3, 'Ещё', Icons.more_horiz),
   ];
 
-  void _go(int branch) => shell.goBranch(branch, initialLocation: branch == shell.currentIndex);
+  void _go(int branch) =>
+      shell.goBranch(branch, initialLocation: branch == shell.currentIndex);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,14 +45,28 @@ class AppShell extends ConsumerWidget {
               child: SizedBox(
                 width: expanded ? 240 : 96,
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: expanded ? 16 : 8, vertical: 20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: expanded ? 16 : 8,
+                    vertical: 20,
+                  ),
                   child: Column(
-                    crossAxisAlignment: expanded ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+                    crossAxisAlignment: expanded
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.center,
                     children: [
                       Padding(
-                        padding: EdgeInsets.only(left: expanded ? 8 : 0, bottom: 20),
-                        child: Text('Leafy',
-                            style: TextStyle(fontSize: expanded ? 26 : 18, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
+                        padding: EdgeInsets.only(
+                          left: expanded ? 8 : 0,
+                          bottom: 20,
+                        ),
+                        child: Text(
+                          'Leafy',
+                          style: TextStyle(
+                            fontSize: expanded ? 26 : 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
                       ),
                       if (expanded)
                         FilledButton.icon(
@@ -106,7 +124,9 @@ class AppShell extends ConsumerWidget {
                         softWrap: false,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           color: selected ? p.accent : p.inkSecondary,
                         ),
                       ),
@@ -114,7 +134,14 @@ class AppShell extends ConsumerWidget {
                     // На телефоне — точка вместо числа, чтобы подпись не обрезалась.
                     if (badge > 0) ...[
                       const SizedBox(width: 4),
-                      Container(width: 7, height: 7, decoration: BoxDecoration(color: p.accent, shape: BoxShape.circle)),
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: p.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -162,8 +189,18 @@ class _Badge extends StatelessWidget {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(10)),
-      child: Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: p.bg)),
+      decoration: BoxDecoration(
+        color: p.accent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: p.bg,
+        ),
+      ),
     );
   }
 }
@@ -178,13 +215,23 @@ class _CameraButton extends StatelessWidget {
     final p = context.palette;
     return Tooltip(
       message: 'Распознать растение',
-      child: Material(
-        color: p.inkButton,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox.square(dimension: 56, child: Icon(Icons.center_focus_weak, size: 28, color: p.onInkButton)),
+      child: PressScale(
+        scale: 0.9,
+        child: Material(
+          color: p.inkButton,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox.square(
+              dimension: 56,
+              child: Icon(
+                Icons.center_focus_weak,
+                size: 28,
+                color: p.onInkButton,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -213,24 +260,42 @@ class _SideItem extends StatelessWidget {
     final p = context.palette;
     final color = selected ? p.ink : p.inkSecondary;
     final content = expanded
-        ? Row(children: [
-            Icon(icon, color: selected ? p.accent : p.inkSecondary),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(label,
-                  style: TextStyle(fontSize: 16, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, color: color)),
-            ),
-            if (badge > 0) _Badge(badge),
-          ])
-        : Column(mainAxisSize: MainAxisSize.min, children: [
-            Badge(
-              isLabelVisible: badge > 0,
-              label: Text('$badge'),
-              child: Icon(icon, color: selected ? p.accent : p.inkSecondary),
-            ),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, color: color)),
-          ]);
+        ? Row(
+            children: [
+              Icon(icon, color: selected ? p.accent : p.inkSecondary),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+              if (badge > 0) _Badge(badge),
+            ],
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Badge(
+                isLabelVisible: badge > 0,
+                label: Text('$badge'),
+                child: Icon(icon, color: selected ? p.accent : p.inkSecondary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          );
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -240,7 +305,10 @@ class _SideItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: expanded ? 14 : 4, vertical: expanded ? 14 : 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: expanded ? 14 : 4,
+              vertical: expanded ? 14 : 10,
+            ),
             child: content,
           ),
         ),

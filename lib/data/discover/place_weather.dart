@@ -12,12 +12,20 @@ class UserPlace {
 
   Map<String, dynamic> toJson() => {'lat': lat, 'lon': lon, 'label': label};
 
-  factory UserPlace.fromJson(Map<String, dynamic> j) =>
-      UserPlace(lat: (j['lat'] as num).toDouble(), lon: (j['lon'] as num).toDouble(), label: j['label'] as String);
+  factory UserPlace.fromJson(Map<String, dynamic> j) => UserPlace(
+    lat: (j['lat'] as num).toDouble(),
+    lon: (j['lon'] as num).toDouble(),
+    label: j['label'] as String,
+  );
 }
 
 class DayForecast {
-  const DayForecast({required this.date, required this.min, required this.max, required this.precipitation});
+  const DayForecast({
+    required this.date,
+    required this.min,
+    required this.max,
+    required this.precipitation,
+  });
 
   final DateTime date;
   final double min;
@@ -26,7 +34,11 @@ class DayForecast {
 }
 
 class Weather {
-  const Weather({required this.temperature, required this.humidity, required this.days});
+  const Weather({
+    required this.temperature,
+    required this.humidity,
+    required this.days,
+  });
 
   final double temperature;
   final double humidity;
@@ -45,7 +57,8 @@ class Weather {
             date: DateTime.parse(dates[i]),
             min: ((d['temperature_2m_min'] as List)[i] as num).toDouble(),
             max: ((d['temperature_2m_max'] as List)[i] as num).toDouble(),
-            precipitation: (((d['precipitation_sum'] as List)[i] as num?) ?? 0).toDouble(),
+            precipitation: (((d['precipitation_sum'] as List)[i] as num?) ?? 0)
+                .toDouble(),
           ),
       ],
     );
@@ -60,45 +73,69 @@ class PlaceWeatherClient {
 
   Future<Map<String, dynamic>> _json(Uri uri) async {
     final res = await _http.get(uri).timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) throw Exception('${uri.host}: ${res.statusCode}');
-    return Map<String, dynamic>.from(jsonDecode(utf8.decode(res.bodyBytes)) as Map);
+    if (res.statusCode != 200) {
+      throw Exception('${uri.host}: ${res.statusCode}');
+    }
+    return Map<String, dynamic>.from(
+      jsonDecode(utf8.decode(res.bodyBytes)) as Map,
+    );
   }
 
   Future<Weather> weather(UserPlace p) async {
-    final j = await _json(Uri.https('api.open-meteo.com', '/v1/forecast', {
-      'latitude': '${p.lat}',
-      'longitude': '${p.lon}',
-      'current': 'temperature_2m,relative_humidity_2m',
-      'daily': 'temperature_2m_max,temperature_2m_min,precipitation_sum',
-      'timezone': 'auto',
-      'forecast_days': '4',
-    }));
+    final j = await _json(
+      Uri.https('api.open-meteo.com', '/v1/forecast', {
+        'latitude': '${p.lat}',
+        'longitude': '${p.lon}',
+        'current': 'temperature_2m,relative_humidity_2m',
+        'daily': 'temperature_2m_max,temperature_2m_min,precipitation_sum',
+        'timezone': 'auto',
+        'forecast_days': '4',
+      }),
+    );
     return Weather.fromOpenMeteo(j);
   }
 
   /// Поиск города по названию.
   Future<List<UserPlace>> searchCity(String q) async {
     if (q.trim().length < 2) return const [];
-    final j = await _json(Uri.https('geocoding-api.open-meteo.com', '/v1/search',
-        {'name': q.trim(), 'count': '8', 'language': 'ru', 'format': 'json'}));
+    final j = await _json(
+      Uri.https('geocoding-api.open-meteo.com', '/v1/search', {
+        'name': q.trim(),
+        'count': '8',
+        'language': 'ru',
+        'format': 'json',
+      }),
+    );
     return ((j['results'] as List?) ?? const []).map((e) {
       final m = Map<String, dynamic>.from(e as Map);
-      final parts = [m['name'], m['admin1'], m['country']].whereType<String>().toSet().toList();
-      return UserPlace(lat: (m['latitude'] as num).toDouble(), lon: (m['longitude'] as num).toDouble(), label: parts.join(', '));
+      final parts = [
+        m['name'],
+        m['admin1'],
+        m['country'],
+      ].whereType<String>().toSet().toList();
+      return UserPlace(
+        lat: (m['latitude'] as num).toDouble(),
+        lon: (m['longitude'] as num).toDouble(),
+        label: parts.join(', '),
+      );
     }).toList();
   }
 
   /// Название места по координатам (для автоопределения).
   Future<String> placeName(double lat, double lon) async {
     try {
-      final j = await _json(Uri.https('api.bigdatacloud.net', '/data/reverse-geocode-client',
-          {'latitude': '$lat', 'longitude': '$lon', 'localityLanguage': 'ru'}));
-      final parts = [j['city'], j['locality'], j['countryName']]
-          .whereType<String>()
-          .where((s) => s.isNotEmpty)
-          .toSet()
-          .take(2)
-          .toList();
+      final j = await _json(
+        Uri.https('api.bigdatacloud.net', '/data/reverse-geocode-client', {
+          'latitude': '$lat',
+          'longitude': '$lon',
+          'localityLanguage': 'ru',
+        }),
+      );
+      final parts = [
+        j['city'],
+        j['locality'],
+        j['countryName'],
+      ].whereType<String>().where((s) => s.isNotEmpty).toSet().take(2).toList();
       if (parts.isNotEmpty) return parts.join(', ');
     } catch (_) {
       // Без названия место всё равно работает — покажем координаты.
@@ -116,19 +153,31 @@ List<String> weatherTips(Weather w, {bool hasOutdoor = true}) {
   final maxT = next.map((d) => d.max).reduce((a, b) => a > b ? a : b);
   final rain = next.fold<double>(0, (s, d) => s + d.precipitation);
   if (minT <= 0) {
-    tips.add('Ночью до ${minT.round()}° — заморозки. Занесите балконные растения, укройте молодые посадки.');
+    tips.add(
+      'Ночью до ${minT.round()}° — заморозки. Занесите балконные растения, укройте молодые посадки.',
+    );
   } else if (minT <= 5) {
-    tips.add('Ночи холодные, до ${minT.round()}°. Теплолюбивые растения с балкона пора переносить в дом.');
+    tips.add(
+      'Ночи холодные, до ${minT.round()}°. Теплолюбивые растения с балкона пора переносить в дом.',
+    );
   }
   if (maxT >= 28) {
-    tips.add('Жара до ${maxT.round()}°. Проверяйте почву чаще, притеняйте растения от полуденного солнца.');
+    tips.add(
+      'Жара до ${maxT.round()}°. Проверяйте почву чаще, притеняйте растения от полуденного солнца.',
+    );
   }
   if (hasOutdoor && rain >= 10) {
-    tips.add('В ближайшие дни ${rain.round()} мм осадков — уличные растения можно не поливать.');
+    tips.add(
+      'В ближайшие дни ${rain.round()} мм осадков — уличные растения можно не поливать.',
+    );
   }
   if (w.humidity < 40) {
-    tips.add('Влажность воздуха ${w.humidity.round()}%. Тропическим растениям поможет опрыскивание или поддон с водой.');
+    tips.add(
+      'Влажность воздуха ${w.humidity.round()}%. Тропическим растениям поможет опрыскивание или поддон с водой.',
+    );
   }
-  if (tips.isEmpty) tips.add('Погода спокойная — поливаем по графику, без поправок.');
+  if (tips.isEmpty) {
+    tips.add('Погода спокойная — поливаем по графику, без поправок.');
+  }
   return tips;
 }

@@ -1,6 +1,7 @@
 import '../models.dart';
 
-Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+Map<String, dynamic> _map(Object? v) =>
+    v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 List<dynamic> _list(Object? v) => v is List ? v : const [];
 String? _str(Object? v) {
   if (v is String) return v.isEmpty ? null : v;
@@ -14,7 +15,8 @@ IdentificationResult parsePlantIdIdentification(Map<String, dynamic> json) {
   final suggestions = _list(_map(result['classification'])['suggestions']);
   return IdentificationResult(
     provider: 'Plant.id',
-    isPlantProbability: (_map(result['is_plant'])['probability'] as num?)?.toDouble(),
+    isPlantProbability: (_map(result['is_plant'])['probability'] as num?)
+        ?.toDouble(),
     candidates: suggestions.map((s) {
       final m = _map(s);
       final d = _map(m['details']);
@@ -24,7 +26,9 @@ IdentificationResult parsePlantIdIdentification(Map<String, dynamic> json) {
       final max = (watering['max'] as num?)?.toDouble();
       final images = <String>[
         ?_str(d['image']),
-        ..._list(m['similar_images']).map((i) => _str(_map(i)['url'])).whereType<String>(),
+        ..._list(m['similar_images'])
+            .map((i) => _str(_map(i)['url']))
+            .whereType<String>(),
       ];
       return PlantCandidate(
         scientificName: m['name'] as String? ?? '—',
@@ -35,7 +39,9 @@ IdentificationResult parsePlantIdIdentification(Map<String, dynamic> json) {
         imageUrls: images,
         description: _str(d['description']),
         infoUrl: d['url'] as String?,
-        wateringLevel: min == null && max == null ? null : ((min ?? max!) + (max ?? min!)) / 2,
+        wateringLevel: min == null && max == null
+            ? null
+            : ((min ?? max!) + (max ?? min!)) / 2,
         light: _str(d['best_light_condition']),
         soil: _str(d['best_soil_type']),
         toxicity: _str(d['toxicity']),
@@ -56,7 +62,8 @@ HealthResult parsePlantIdHealth(Map<String, dynamic> json) {
       final m = _map(s);
       final d = _map(m['details']);
       final t = _map(d['treatment']);
-      List<String> steps(String k) => _list(t[k]).map((e) => e.toString()).toList();
+      List<String> steps(String k) =>
+          _list(t[k]).map((e) => e.toString()).toList();
       return DiseaseSuggestion(
         name: (d['local_name'] as String?) ?? (m['name'] as String? ?? '—'),
         probability: (m['probability'] as num?)?.toDouble() ?? 0,
@@ -65,7 +72,10 @@ HealthResult parsePlantIdHealth(Map<String, dynamic> json) {
         biological: steps('biological'),
         chemical: steps('chemical'),
         prevention: steps('prevention'),
-        imageUrls: _list(m['similar_images']).map((i) => _str(_map(i)['url'])).whereType<String>().toList(),
+        imageUrls: _list(m['similar_images'])
+            .map((i) => _str(_map(i)['url']))
+            .whereType<String>()
+            .toList(),
       );
     }).toList(),
   );

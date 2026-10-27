@@ -37,7 +37,10 @@ class SpeciesScreen extends ConsumerWidget {
             expandedHeight: 300,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: PlantImage(c.imageUrls.firstOrNull ?? args.photoUrl, radius: 0),
+              background: PlantImage(
+                c.imageUrls.firstOrNull ?? args.photoUrl,
+                radius: 0,
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -46,25 +49,49 @@ class SpeciesScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c.displayName, style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    c.displayName,
+                    style: t.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(c.scientificName, style: t.textTheme.titleMedium?.copyWith(fontStyle: FontStyle.italic)),
+                  Text(
+                    c.scientificName,
+                    style: t.textTheme.titleMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                   if (c.commonNames.length > 1) ...[
                     const SizedBox(height: 8),
-                    Text('Также: ${c.commonNames.skip(1).take(4).join(', ')}',
-                        style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                    Text(
+                      'Также: ${c.commonNames.skip(1).take(4).join(', ')}',
+                      style: t.textTheme.bodySmall?.copyWith(
+                        color: t.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 16),
                   SpeciesCareFacts(candidate: c),
                   if (c.description != null) ...[
                     const SizedBox(height: 20),
-                    Text('Описание', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      'Описание',
+                      style: t.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(c.description!, style: t.textTheme.bodyLarge),
                   ],
                   if (c.imageUrls.length > 1) ...[
                     const SizedBox(height: 20),
-                    Text('Похожие фото', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      'Похожие фото',
+                      style: t.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 110,
@@ -72,7 +99,10 @@ class SpeciesScreen extends ConsumerWidget {
                         scrollDirection: Axis.horizontal,
                         itemCount: c.imageUrls.length,
                         separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) => SizedBox(width: 110, child: PlantImage(c.imageUrls[i], radius: 12)),
+                        itemBuilder: (_, i) => SizedBox(
+                          width: 110,
+                          child: PlantImage(c.imageUrls[i], radius: 12),
+                        ),
                       ),
                     ),
                   ],
@@ -99,9 +129,16 @@ class SpeciesScreen extends ConsumerWidget {
             icon: const Icon(Icons.add),
             label: const Text('Добавить в мой сад'),
             onPressed: () async {
-              final plant = await showAddPlantSheet(context, ref, species: c, photo: args.photo);
+              final plant = await showAddPlantSheet(
+                context,
+                ref,
+                species: c,
+                photo: args.photo,
+              );
               if (plant != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('«${plant.nickname}» в вашем саду')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('«${plant.nickname}» в вашем саду')),
+                );
                 context.go('/garden');
                 context.push('/plant/${plant.id}');
               }
@@ -124,17 +161,34 @@ class SpeciesCareFacts extends StatelessWidget {
     final c = candidate;
     // (иконка, заголовок, кратко по-русски, полный текст сервиса если он на другом языке)
     final facts = <(IconData, String, String, String?)>[
-      (Icons.water_drop, 'Полив', c.wateringLevel == null ? 'нет данных' : everyLabel(c.suggestedWateringDays), null),
-      if (c.light != null) _fact(Icons.wb_sunny, 'Свет', c.light!, lightSummaryRu(c.light)),
-      if (c.soil != null) _fact(Icons.grass, 'Почва', c.soil!, soilSummaryRu(c.soil)),
-      if (c.toxicity != null) _fact(Icons.warning_amber, 'Ядовитость', c.toxicity!, toxicitySummaryRu(c.toxicity)),
+      (
+        Icons.water_drop,
+        'Полив',
+        c.wateringLevel == null
+            ? 'нет данных'
+            : everyLabel(c.suggestedWateringDays),
+        null,
+      ),
+      if (c.light != null)
+        _fact(Icons.wb_sunny, 'Свет', c.light!, lightSummaryRu(c.light)),
+      if (c.soil != null)
+        _fact(Icons.grass, 'Почва', c.soil!, soilSummaryRu(c.soil)),
+      if (c.toxicity != null)
+        _fact(
+          Icons.warning_amber,
+          'Ядовитость',
+          c.toxicity!,
+          toxicitySummaryRu(c.toxicity),
+        ),
     ];
     if (c.wateringLevel == null && facts.length == 1) {
       return const Card(
         child: ListTile(
           leading: Icon(Icons.info_outline),
           title: Text('Советы по уходу недоступны'),
-          subtitle: Text('Этот сервис возвращает только вид. Для советов по уходу используйте Plant.id.'),
+          subtitle: Text(
+            'Этот сервис возвращает только вид. Для советов по уходу используйте Plant.id.',
+          ),
         ),
       );
     }
@@ -147,20 +201,32 @@ class SpeciesCareFacts extends StatelessWidget {
               child: details == null
                   ? ListTile(
                       leading: CircleAvatar(child: Icon(icon)),
-                      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      title: Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       subtitle: Text(value),
                     )
                   : ExpansionTile(
                       shape: const Border(),
                       leading: CircleAvatar(child: Icon(icon)),
-                      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      title: Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       subtitle: Text(value),
                       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       expandedCrossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Подробнее (англ.)', style: Theme.of(context).textTheme.labelMedium),
+                        Text(
+                          'Подробнее (англ.)',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
                         const SizedBox(height: 4),
-                        Text(details, style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          details,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ),
             ),
@@ -170,7 +236,12 @@ class SpeciesCareFacts extends StatelessWidget {
   }
 
   /// Если сервис ответил не по-русски — показываем краткую сводку, а оригинал прячем в «подробнее».
-  static (IconData, String, String, String?) _fact(IconData icon, String title, String raw, String? summary) {
+  static (IconData, String, String, String?) _fact(
+    IconData icon,
+    String title,
+    String raw,
+    String? summary,
+  ) {
     if (isRussian(raw)) return (icon, title, raw, null);
     return (icon, title, summary ?? 'Описание на английском', raw);
   }
@@ -196,10 +267,25 @@ class _Taxonomy extends StatelessWidget {
             for (final (k, v) in rows)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(children: [
-                  SizedBox(width: 110, child: Text(k, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
-                  Expanded(child: Text(v, style: const TextStyle(fontStyle: FontStyle.italic))),
-                ]),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        k,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        v,
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),

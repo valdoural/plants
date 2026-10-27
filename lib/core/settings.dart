@@ -85,7 +85,8 @@ class AppSettings {
   /// Тема оформления: как в системе, светлая или тёмная.
   final ThemeMode themeMode;
 
-  bool get supabaseConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+  bool get supabaseConfigured =>
+      supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   bool hasKeyFor(RecognitionProviderId id) =>
       (useServerProxy && supabaseConfigured) ||
@@ -109,36 +110,43 @@ class AppSettings {
     int? reminderHour,
     int? reminderMinute,
     ThemeMode? themeMode,
-  }) =>
-      AppSettings(
-        provider: provider ?? this.provider,
-        plantIdKey: plantIdKey ?? this.plantIdKey,
-        plantNetKey: plantNetKey ?? this.plantNetKey,
-        language: language ?? this.language,
-        useServerProxy: useServerProxy ?? this.useServerProxy,
-        supabaseUrl: supabaseUrl ?? this.supabaseUrl,
-        supabaseAnonKey: supabaseAnonKey ?? this.supabaseAnonKey,
-        onboardingDone: onboardingDone ?? this.onboardingDone,
-        notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
-        reminderHour: reminderHour ?? this.reminderHour,
-        reminderMinute: reminderMinute ?? this.reminderMinute,
-        themeMode: themeMode ?? this.themeMode,
-      );
+  }) => AppSettings(
+    provider: provider ?? this.provider,
+    plantIdKey: plantIdKey ?? this.plantIdKey,
+    plantNetKey: plantNetKey ?? this.plantNetKey,
+    language: language ?? this.language,
+    useServerProxy: useServerProxy ?? this.useServerProxy,
+    supabaseUrl: supabaseUrl ?? this.supabaseUrl,
+    supabaseAnonKey: supabaseAnonKey ?? this.supabaseAnonKey,
+    onboardingDone: onboardingDone ?? this.onboardingDone,
+    notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+    reminderHour: reminderHour ?? this.reminderHour,
+    reminderMinute: reminderMinute ?? this.reminderMinute,
+    themeMode: themeMode ?? this.themeMode,
+  );
 
   static AppSettings load(SharedPreferences p) => AppSettings(
-        provider: RecognitionProviderId.values.asNameMap()[p.getString('provider')] ?? RecognitionProviderId.plantNet,
-        plantIdKey: p.getString('plantIdKey') ?? '',
-        plantNetKey: p.getString('plantNetKey') ?? '',
-        language: p.getString('language') ?? 'ru',
-        useServerProxy: p.getBool('useServerProxy') ?? false,
-        supabaseUrl: p.getString('supabaseUrl') ?? const String.fromEnvironment('SUPABASE_URL'),
-        supabaseAnonKey: p.getString('supabaseAnonKey') ?? const String.fromEnvironment('SUPABASE_ANON_KEY'),
-        onboardingDone: p.getBool('onboardingDone') ?? false,
-        notificationsEnabled: p.getBool('notificationsEnabled') ?? true,
-        reminderHour: p.getInt('reminderHour') ?? 9,
-        reminderMinute: p.getInt('reminderMinute') ?? 0,
-        themeMode: ThemeMode.values.asNameMap()[p.getString('themeMode')] ?? ThemeMode.system,
-      );
+    provider:
+        RecognitionProviderId.values.asNameMap()[p.getString('provider')] ??
+        RecognitionProviderId.plantNet,
+    plantIdKey: p.getString('plantIdKey') ?? '',
+    plantNetKey: p.getString('plantNetKey') ?? '',
+    language: p.getString('language') ?? 'ru',
+    useServerProxy: p.getBool('useServerProxy') ?? false,
+    supabaseUrl:
+        p.getString('supabaseUrl') ??
+        const String.fromEnvironment('SUPABASE_URL'),
+    supabaseAnonKey:
+        p.getString('supabaseAnonKey') ??
+        const String.fromEnvironment('SUPABASE_ANON_KEY'),
+    onboardingDone: p.getBool('onboardingDone') ?? false,
+    notificationsEnabled: p.getBool('notificationsEnabled') ?? true,
+    reminderHour: p.getInt('reminderHour') ?? 9,
+    reminderMinute: p.getInt('reminderMinute') ?? 0,
+    themeMode:
+        ThemeMode.values.asNameMap()[p.getString('themeMode')] ??
+        ThemeMode.system,
+  );
 
   Future<void> save(SharedPreferences p) async {
     await p.setString('provider', provider.name);
@@ -156,12 +164,16 @@ class AppSettings {
   }
 }
 
-final sharedPrefsProvider = Provider<SharedPreferences>((ref) => throw UnimplementedError('override in main'));
+final sharedPrefsProvider = Provider<SharedPreferences>(
+  (ref) => throw UnimplementedError('override in main'),
+);
 
 /// Инициализирован ли Supabase при запуске (меняется только после перезапуска).
 final supabaseReadyProvider = Provider<bool>((ref) => false);
 
-final settingsProvider = NotifierProvider<SettingsController, AppSettings>(SettingsController.new);
+final settingsProvider = NotifierProvider<SettingsController, AppSettings>(
+  SettingsController.new,
+);
 
 class SettingsController extends Notifier<AppSettings> {
   @override

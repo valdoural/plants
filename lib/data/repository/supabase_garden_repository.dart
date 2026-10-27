@@ -15,7 +15,10 @@ class SupabaseGardenRepository implements GardenRepository {
   @override
   String get label => 'Supabase (облако)';
 
-  Future<List<Map<String, dynamic>>> _select(String table, {String order = 'created_at'}) async {
+  Future<List<Map<String, dynamic>>> _select(
+    String table, {
+    String order = 'created_at',
+  }) async {
     final rows = await _db.from(table).select().order(order, ascending: false);
     return rows.map(Map<String, dynamic>.from).toList();
   }
@@ -38,8 +41,10 @@ class SupabaseGardenRepository implements GardenRepository {
     );
   }
 
-  Future<void> _upsert(String table, Map<String, dynamic> row) => _db.from(table).upsert(row);
-  Future<void> _delete(String table, String id) => _db.from(table).delete().eq('id', id);
+  Future<void> _upsert(String table, Map<String, dynamic> row) =>
+      _db.from(table).upsert(row);
+  Future<void> _delete(String table, String id) =>
+      _db.from(table).delete().eq('id', id);
 
   @override
   Future<void> savePlant(Plant plant) => _upsert('plants', plant.toJson());
@@ -61,13 +66,16 @@ class SupabaseGardenRepository implements GardenRepository {
   Future<void> deleteNote(String id) => _delete('notes', id);
 
   @override
-  Future<void> saveIdentification(IdentificationRecord record) => _upsert('identifications', record.toJson());
+  Future<void> saveIdentification(IdentificationRecord record) =>
+      _upsert('identifications', record.toJson());
 
   @override
-  Future<void> deleteIdentification(String id) => _delete('identifications', id);
+  Future<void> deleteIdentification(String id) =>
+      _delete('identifications', id);
 
   @override
-  Future<void> saveDiagnosis(DiagnosisRecord record) => _upsert('diagnoses', record.toJson());
+  Future<void> saveDiagnosis(DiagnosisRecord record) =>
+      _upsert('diagnoses', record.toJson());
 
   @override
   Future<void> deleteDiagnosis(String id) => _delete('diagnoses', id);
@@ -76,7 +84,9 @@ class SupabaseGardenRepository implements GardenRepository {
   Future<String> storePhoto(Uint8List jpegBytes) async {
     final uid = _db.auth.currentUser!.id;
     final path = '$uid/${newId()}.jpg';
-    await _db.storage.from('photos').uploadBinary(
+    await _db.storage
+        .from('photos')
+        .uploadBinary(
           path,
           jpegBytes,
           fileOptions: const FileOptions(contentType: 'image/jpeg'),

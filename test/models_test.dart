@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+
 import 'dart:typed_data';
 
 import 'package:leafy/data/models.dart';
@@ -36,7 +37,11 @@ void main() {
       nickname: 'Фикус',
       createdAt: DateTime(2026, 1, 2),
       location: PlantLocation.balcony,
-      species: const PlantCandidate(scientificName: 'Ficus elastica', probability: 0.9, wateringLevel: 1),
+      species: const PlantCandidate(
+        scientificName: 'Ficus elastica',
+        probability: 0.9,
+        wateringLevel: 1,
+      ),
     );
     final back = Plant.fromJson(plant.toJson());
     expect(back.nickname, 'Фикус');
@@ -50,8 +55,32 @@ void main() {
   });
 
   test('тип фото определяется по содержимому', () {
-    expect(imageMimeType(Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0])), 'image/jpeg');
-    expect(imageMimeType(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A])), 'image/png');
-    expect(imageMimeType(Uint8List.fromList([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63])), 'image/heic');
+    expect(
+      imageMimeType(Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0])),
+      'image/jpeg',
+    );
+    expect(
+      imageMimeType(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A])),
+      'image/png',
+    );
+    expect(
+      imageMimeType(
+        Uint8List.fromList([
+          0,
+          0,
+          0,
+          24,
+          0x66,
+          0x74,
+          0x79,
+          0x70,
+          0x68,
+          0x65,
+          0x69,
+          0x63,
+        ]),
+      ),
+      'image/heic',
+    );
   });
 }

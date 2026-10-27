@@ -6,8 +6,9 @@ import 'package:leafy/data/recognition/plant_id_parser.dart';
 import 'package:leafy/data/recognition/plantnet_parser.dart';
 
 /// Настоящие ответы сервисов (сохранены 27.10.2026), чтобы парсеры не зависели от догадок о формате.
-Map<String, dynamic> fixture(String name) =>
-    Map<String, dynamic>.from(jsonDecode(File('test/fixtures/$name').readAsStringSync()) as Map);
+Map<String, dynamic> fixture(String name) => Map<String, dynamic>.from(
+  jsonDecode(File('test/fixtures/$name').readAsStringSync()) as Map,
+);
 
 void main() {
   test('Pl@ntNet: монстера', () {
@@ -22,7 +23,9 @@ void main() {
   });
 
   test('Plant.id: фикус', () {
-    final r = parsePlantIdIdentification(fixture('plantid_identification.json'));
+    final r = parsePlantIdIdentification(
+      fixture('plantid_identification.json'),
+    );
     final top = r.candidates.first;
     expect(top.scientificName, 'Ficus elastica');
     expect(top.displayName, 'Фикус каучуконосный');

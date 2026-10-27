@@ -21,10 +21,10 @@ extension ResponsiveX on BuildContext {
 
   /// Боковой отступ контента: на телефоне 16, на больших экранах — шире.
   double get gutter => switch (windowSize) {
-        WindowSize.compact => 16,
-        WindowSize.medium => 24,
-        WindowSize.expanded => 32,
-      };
+    WindowSize.compact => 16,
+    WindowSize.medium => 24,
+    WindowSize.expanded => 32,
+  };
 }
 
 /// Ограничивает ширину контента и центрирует его — чтобы строки не растягивались на весь монитор.
@@ -38,7 +38,10 @@ class MaxWidth extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
     );
   }
 }

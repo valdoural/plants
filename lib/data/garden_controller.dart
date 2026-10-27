@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'repository/garden_repository.dart';
 
-final gardenRepositoryProvider = Provider<GardenRepository>((ref) => throw UnimplementedError('override in main'));
+final gardenRepositoryProvider = Provider<GardenRepository>(
+  (ref) => throw UnimplementedError('override in main'),
+);
 
-final gardenProvider = AsyncNotifierProvider<GardenController, GardenData>(GardenController.new);
+final gardenProvider = AsyncNotifierProvider<GardenController, GardenData>(
+  GardenController.new,
+);
 
 /// Состояние «Моего сада»: растения, задачи ухода, заметки и история.
 /// После каждого изменения данные перечитываются из хранилища — просто и надёжно для объёмов одного пользователя.
@@ -31,7 +35,9 @@ class GardenController extends AsyncNotifier<GardenData> {
     PlantLocation location = PlantLocation.indoor,
     Map<CareType, int> care = const {CareType.water: 7},
   }) async {
-    final photoUrl = photo != null ? await _repo.storePhoto(photo) : species?.imageUrls.firstOrNull;
+    final photoUrl = photo != null
+        ? await _repo.storePhoto(photo)
+        : species?.imageUrls.firstOrNull;
     final plant = Plant(
       id: newId(),
       nickname: nickname,
@@ -45,7 +51,9 @@ class GardenController extends AsyncNotifier<GardenData> {
     await _run(() async {
       await _repo.savePlant(plant);
       for (final e in care.entries) {
-        await _repo.saveTask(CareTask.create(plant.id, e.key, intervalDays: e.value));
+        await _repo.saveTask(
+          CareTask.create(plant.id, e.key, intervalDays: e.value),
+        );
       }
     });
     return plant;
@@ -57,18 +65,30 @@ class GardenController extends AsyncNotifier<GardenData> {
   Future<void> saveTask(CareTask task) => _run(() => _repo.saveTask(task));
   Future<void> deleteTask(String id) => _run(() => _repo.deleteTask(id));
   Future<void> completeTask(CareTask task) => saveTask(task.complete());
-  Future<void> snoozeTask(CareTask task, [int days = 1]) => saveTask(task.snooze(days));
+  Future<void> snoozeTask(CareTask task, [int days = 1]) =>
+      saveTask(task.snooze(days));
 
   Future<void> addNote(String plantId, String text, {Uint8List? photo}) async {
     final photoUrl = photo == null ? null : await _repo.storePhoto(photo);
-    await _run(() => _repo.saveNote(
-          Note(id: newId(), plantId: plantId, text: text, photoUrl: photoUrl, createdAt: DateTime.now()),
-        ));
+    await _run(
+      () => _repo.saveNote(
+        Note(
+          id: newId(),
+          plantId: plantId,
+          text: text,
+          photoUrl: photoUrl,
+          createdAt: DateTime.now(),
+        ),
+      ),
+    );
   }
 
   Future<void> deleteNote(String id) => _run(() => _repo.deleteNote(id));
 
-  Future<IdentificationRecord> addIdentification(IdentificationResult result, Uint8List photo) async {
+  Future<IdentificationRecord> addIdentification(
+    IdentificationResult result,
+    Uint8List photo,
+  ) async {
     final record = IdentificationRecord(
       id: newId(),
       provider: result.provider,
@@ -80,9 +100,14 @@ class GardenController extends AsyncNotifier<GardenData> {
     return record;
   }
 
-  Future<void> deleteIdentification(String id) => _run(() => _repo.deleteIdentification(id));
+  Future<void> deleteIdentification(String id) =>
+      _run(() => _repo.deleteIdentification(id));
 
-  Future<DiagnosisRecord> addDiagnosis(HealthResult result, Uint8List photo, {String? plantId}) async {
+  Future<DiagnosisRecord> addDiagnosis(
+    HealthResult result,
+    Uint8List photo, {
+    String? plantId,
+  }) async {
     final record = DiagnosisRecord(
       id: newId(),
       plantId: plantId,
@@ -94,5 +119,6 @@ class GardenController extends AsyncNotifier<GardenData> {
     return record;
   }
 
-  Future<void> deleteDiagnosis(String id) => _run(() => _repo.deleteDiagnosis(id));
+  Future<void> deleteDiagnosis(String id) =>
+      _run(() => _repo.deleteDiagnosis(id));
 }

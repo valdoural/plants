@@ -26,28 +26,41 @@ Future<void> main() async {
   String? startupWarning;
   if (settings.supabaseConfigured) {
     try {
-      await Supabase.initialize(url: settings.supabaseUrl, publishableKey: settings.supabaseAnonKey);
+      await Supabase.initialize(
+        url: settings.supabaseUrl,
+        publishableKey: settings.supabaseAnonKey,
+      );
       final auth = Supabase.instance.client.auth;
       if (auth.currentSession == null) await auth.signInAnonymously();
       repository = SupabaseGardenRepository(Supabase.instance.client);
       supabaseReady = true;
     } catch (e) {
-      startupWarning = 'Не удалось подключиться к Supabase, данные сохраняются на устройстве. ($e)';
+      startupWarning =
+          'Не удалось подключиться к Supabase, данные сохраняются на устройстве. ($e)';
     }
   }
 
-  runApp(ProviderScope(
-    overrides: [
-      sharedPrefsProvider.overrideWithValue(prefs),
-      supabaseReadyProvider.overrideWithValue(supabaseReady),
-      gardenRepositoryProvider.overrideWithValue(repository),
-    ],
-    child: LeafyApp(showOnboarding: !settings.onboardingDone, startupWarning: startupWarning),
-  ));
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPrefsProvider.overrideWithValue(prefs),
+        supabaseReadyProvider.overrideWithValue(supabaseReady),
+        gardenRepositoryProvider.overrideWithValue(repository),
+      ],
+      child: LeafyApp(
+        showOnboarding: !settings.onboardingDone,
+        startupWarning: startupWarning,
+      ),
+    ),
+  );
 }
 
 class LeafyApp extends ConsumerStatefulWidget {
-  const LeafyApp({super.key, required this.showOnboarding, this.startupWarning});
+  const LeafyApp({
+    super.key,
+    required this.showOnboarding,
+    this.startupWarning,
+  });
 
   final bool showOnboarding;
   final String? startupWarning;
@@ -65,7 +78,9 @@ class _LeafyAppState extends ConsumerState<LeafyApp> {
     super.initState();
     if (widget.startupWarning case final w?) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _messenger.currentState?.showSnackBar(SnackBar(content: Text(w), duration: const Duration(seconds: 8))),
+        (_) => _messenger.currentState?.showSnackBar(
+          SnackBar(content: Text(w), duration: const Duration(seconds: 8)),
+        ),
       );
     }
   }

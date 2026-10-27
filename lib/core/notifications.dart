@@ -15,15 +15,22 @@ class ReminderNotifications {
   final _plugin = FlutterLocalNotificationsPlugin();
   var _ready = false;
 
-  static bool get supported => !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+  static bool get supported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   static const _channel = AndroidNotificationDetails(
     'care_reminders',
     'Напоминания об уходе',
-    channelDescription: 'Ежедневная сводка: что полить, подкормить или пересадить',
+    channelDescription:
+        'Ежедневная сводка: что полить, подкормить или пересадить',
     importance: Importance.defaultImportance,
   );
-  static const _details = NotificationDetails(android: _channel, iOS: DarwinNotificationDetails());
+  static const _details = NotificationDetails(
+    android: _channel,
+    iOS: DarwinNotificationDetails(),
+  );
 
   /// Сколько дней вперёд планировать (повторы после выполнения пересчитываются при следующем изменении сада).
   static const horizonDays = 30;
@@ -32,7 +39,9 @@ class ReminderNotifications {
     if (!supported || _ready) return;
     tzdata.initializeTimeZones();
     try {
-      tz.setLocalLocation(tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier));
+      tz.setLocalLocation(
+        tz.getLocation((await FlutterTimezone.getLocalTimezone()).identifier),
+      );
     } catch (_) {
       // Неизвестная зона — остаётся UTC, сдвиг не критичен для напоминаний «на день».
     }
@@ -53,22 +62,51 @@ class ReminderNotifications {
   Future<bool> requestPermission() async {
     if (!supported) return false;
     await init();
-    final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    if (android != null) return await android.requestNotificationsPermission() ?? false;
-    final ios = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-    return await ios?.requestPermissions(alert: true, badge: true, sound: true) ?? false;
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android != null) {
+      return await android.requestNotificationsPermission() ?? false;
+    }
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    return await ios?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        ) ??
+        false;
   }
 
   /// Перепланирует все уведомления по текущему состоянию сада.
-  Future<void> reschedule(GardenData data, {required bool enabled, required int hour, required int minute}) async {
+  Future<void> reschedule(
+    GardenData data, {
+    required bool enabled,
+    required int hour,
+    required int minute,
+  }) async {
     if (!supported) return;
     await init();
     await _plugin.cancelAll();
     if (!enabled) return;
 
     final now = tz.TZDateTime.now(tz.local);
-    for (final day in buildDailyDigests(data, DateTime(now.year, now.month, now.day), horizonDays)) {
-      final at = tz.TZDateTime(tz.local, day.date.year, day.date.month, day.date.day, hour, minute);
+    for (final day in buildDailyDigests(
+      data,
+      DateTime(now.year, now.month, now.day),
+      horizonDays,
+    )) {
+      final at = tz.TZDateTime(
+        tz.local,
+        day.date.year,
+        day.date.month,
+        day.date.day,
+        hour,
+        minute,
+      );
       if (!at.isAfter(now)) continue;
       await _plugin.zonedSchedule(
         id: day.date.year * 10000 + day.date.month * 100 + day.date.day,
@@ -93,7 +131,11 @@ class DailyDigest {
 
 /// Группирует задачи по дням: просроченные попадают на сегодня.
 /// Отдельная функция без зависимостей от плагина — чтобы её можно было протестировать.
-List<DailyDigest> buildDailyDigests(GardenData data, DateTime today, int horizonDays) {
+List<DailyDigest> buildDailyDigests(
+  GardenData data,
+  DateTime today,
+  int horizonDays,
+) {
   final byDay = <DateTime, List<CareTask>>{};
   for (final t in data.tasks) {
     if (!t.enabled || data.plant(t.plantId) == null) continue;
@@ -107,7 +149,9 @@ List<DailyDigest> buildDailyDigests(GardenData data, DateTime today, int horizon
     for (final d in days)
       DailyDigest(
         d,
-        byDay[d]!.length == 1 ? 'Растению нужен уход' : 'Растениям нужен уход: ${byDay[d]!.length}',
+        byDay[d]!.length == 1
+            ? 'Растению нужен уход'
+            : 'Растениям нужен уход: ${byDay[d]!.length}',
         _body(data, byDay[d]!),
       ),
   ];
@@ -118,5 +162,7 @@ String _body(GardenData data, List<CareTask> tasks) {
   for (final t in tasks) {
     byType.putIfAbsent(t.type, () => []).add(data.plant(t.plantId)!.nickname);
   }
-  return byType.entries.map((e) => '${e.key.label}: ${e.value.join(', ')}').join(' · ');
+  return byType.entries
+      .map((e) => '${e.key.label}: ${e.value.join(', ')}')
+      .join(' · ');
 }

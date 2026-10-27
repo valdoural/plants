@@ -9,10 +9,21 @@ import 'theme.dart';
 
 /// Картинка по https:// или data:-ссылке, с заглушкой.
 class PlantImage extends StatelessWidget {
-  const PlantImage(this.url, {super.key, this.size, this.radius = 16, this.fit = BoxFit.cover}) : bytes = null;
+  const PlantImage(
+    this.url, {
+    super.key,
+    this.size,
+    this.radius = 16,
+    this.fit = BoxFit.cover,
+  }) : bytes = null;
 
-  const PlantImage.memory(Uint8List this.bytes, {super.key, this.size, this.radius = 16, this.fit = BoxFit.cover})
-      : url = null;
+  const PlantImage.memory(
+    Uint8List this.bytes, {
+    super.key,
+    this.size,
+    this.radius = 16,
+    this.fit = BoxFit.cover,
+  }) : url = null;
 
   final String? url;
   final Uint8List? bytes;
@@ -27,25 +38,42 @@ class PlantImage extends StatelessWidget {
       width: size,
       height: size,
       color: p.surfaceHigh,
-      child: Icon(Icons.local_florist_outlined, color: p.inkSecondary, size: (size ?? 64) * 0.4),
+      child: Icon(
+        Icons.local_florist_outlined,
+        color: p.inkSecondary,
+        size: (size ?? 64) * 0.4,
+      ),
     );
     final u = url;
     Widget child;
     if (bytes != null) {
-      child = Image.memory(bytes!, width: size, height: size, fit: fit, gaplessPlayback: true);
+      child = Image.memory(
+        bytes!,
+        width: size,
+        height: size,
+        fit: fit,
+        gaplessPlayback: true,
+      );
     } else if (u == null || u.isEmpty) {
       child = placeholder;
     } else if (u.startsWith('data:')) {
-      child = Image.memory(base64Decode(u.substring(u.indexOf(',') + 1)),
-          width: size, height: size, fit: fit, gaplessPlayback: true);
+      child = Image.memory(
+        base64Decode(u.substring(u.indexOf(',') + 1)),
+        width: size,
+        height: size,
+        fit: fit,
+        gaplessPlayback: true,
+      );
     } else {
       // В браузере картинки чужих CDN грузим через <img>: так не мешает CORS.
-      child = Image.network(u,
-          width: size,
-          height: size,
-          fit: fit,
-          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-          errorBuilder: (_, _, _) => placeholder);
+      child = Image.network(
+        u,
+        width: size,
+        height: size,
+        fit: fit,
+        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+        errorBuilder: (_, _, _) => placeholder,
+      );
     }
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
   }
@@ -64,8 +92,15 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 28, 12, 10),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20))),
-          if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontSize: 20),
+            ),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action!)),
         ],
       ),
     );
@@ -73,7 +108,13 @@ class SectionHeader extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.icon, required this.title, this.message, this.action});
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.message,
+    this.action,
+  });
 
   final IconData icon;
   final String title;
@@ -91,10 +132,20 @@ class EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: context.palette.inkSecondary),
             const SizedBox(height: 16),
-            Text(title, style: t.textTheme.headlineSmall?.copyWith(fontSize: 24), textAlign: TextAlign.center),
+            Text(
+              title,
+              style: t.textTheme.headlineSmall?.copyWith(fontSize: 24),
+              textAlign: TextAlign.center,
+            ),
             if (message != null) ...[
               const SizedBox(height: 8),
-              Text(message!, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
+              Text(
+                message!,
+                style: t.textTheme.bodyMedium?.copyWith(
+                  color: t.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
             if (action != null) ...[const SizedBox(height: 20), action!],
           ],
@@ -114,28 +165,31 @@ class ConfidenceBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (probability * 100).clamp(0, 100).round();
     final p = context.palette;
-    return Text('$pct%',
-        style: TextStyle(
-          color: probability >= 0.5 ? p.accent : p.inkSecondary,
-          fontWeight: FontWeight.w800,
-          fontSize: 16,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ));
+    return Text(
+      '$pct%',
+      style: TextStyle(
+        color: probability >= 0.5 ? p.accent : p.inkSecondary,
+        fontWeight: FontWeight.w800,
+        fontSize: 16,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
   }
 }
 
 IconData careIcon(CareType type) => switch (type) {
-      CareType.water => Icons.water_drop,
-      CareType.fertilize => Icons.science,
-      CareType.mist => Icons.shower,
-      CareType.repot => Icons.yard,
-      CareType.prune => Icons.content_cut,
-      CareType.rotate => Icons.wb_sunny,
-    };
+  CareType.water => Icons.water_drop,
+  CareType.fertilize => Icons.science,
+  CareType.mist => Icons.shower,
+  CareType.repot => Icons.yard,
+  CareType.prune => Icons.content_cut,
+  CareType.rotate => Icons.wb_sunny,
+};
 
 /// Цветом выделяется только вода; остальной уход различается подписью и значком.
-Color careColor(BuildContext context, CareType type) =>
-    type == CareType.water ? context.palette.water : context.palette.inkSecondary;
+Color careColor(BuildContext context, CareType type) => type == CareType.water
+    ? context.palette.water
+    : context.palette.inkSecondary;
 
 String dueLabel(CareTask t) {
   final d = t.daysLeft;
@@ -147,24 +201,74 @@ String dueLabel(CareTask t) {
 
 String everyLabel(int days) {
   if (days == 1) return 'каждый день';
-  if (days % 7 == 0 && days < 60) return 'раз в ${_plural(days ~/ 7, 'неделю', 'недели', 'недель', omitOne: true)}';
+  if (days % 7 == 0 && days < 60) {
+    return 'раз в ${_plural(days ~/ 7, 'неделю', 'недели', 'недель', omitOne: true)}';
+  }
   return 'раз в ${_days(days)}';
 }
 
 String _days(int n) => _plural(n, 'день', 'дня', 'дней');
 
-String _plural(int n, String one, String few, String many, {bool omitOne = false}) {
+String _plural(
+  int n,
+  String one,
+  String few,
+  String many, {
+  bool omitOne = false,
+}) {
   final m10 = n % 10, m100 = n % 100;
   final word = m10 == 1 && m100 != 11
       ? one
       : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14))
-          ? few
-          : many;
+      ? few
+      : many;
   return omitOne && n == 1 ? word : '$n $word';
 }
 
-Future<void> openLink(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+Future<void> openLink(String url) =>
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 void showError(BuildContext context, Object error) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(error.toString()),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+/// Мягкий отклик на нажатие: элемент чуть уменьшается под пальцем и плавно возвращается.
+/// Не перехватывает нажатия (слушает указатель), при «уменьшении движения» в системе — без анимации.
+class PressScale extends StatefulWidget {
+  const PressScale({super.key, required this.child, this.scale = 0.96});
+
+  final Widget child;
+  final double scale;
+
+  @override
+  State<PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<PressScale> {
+  var _down = false;
+
+  void _set(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return Listener(
+      onPointerDown: (_) => _set(true),
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down && !reduce ? widget.scale : 1,
+        duration: Duration(milliseconds: _down ? 110 : 260),
+        curve: _down ? Curves.easeOut : Curves.easeOutBack,
+        child: widget.child,
+      ),
+    );
+  }
 }

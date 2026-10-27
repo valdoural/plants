@@ -36,7 +36,11 @@ class _GardenScreenState extends ConsumerState<GardenScreen> {
       ),
       body: garden.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => EmptyState(icon: Icons.cloud_off, title: 'Не удалось загрузить сад', message: '$e'),
+        error: (e, _) => EmptyState(
+          icon: Icons.cloud_off,
+          title: 'Не удалось загрузить сад',
+          message: '$e',
+        ),
         data: (data) {
           if (data.plants.isEmpty) {
             return EmptyState(
@@ -53,10 +57,12 @@ class _GardenScreenState extends ConsumerState<GardenScreen> {
           final q = _query.toLowerCase();
           final plants = data.plants
               .where((p) => _filter == null || p.location == _filter)
-              .where((p) =>
-                  q.isEmpty ||
-                  p.nickname.toLowerCase().contains(q) ||
-                  (p.scientificName?.toLowerCase().contains(q) ?? false))
+              .where(
+                (p) =>
+                    q.isEmpty ||
+                    p.nickname.toLowerCase().contains(q) ||
+                    (p.scientificName?.toLowerCase().contains(q) ?? false),
+              )
               .toList();
           return CustomScrollView(
             slivers: [
@@ -64,7 +70,10 @@ class _GardenScreenState extends ConsumerState<GardenScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   child: TextField(
-                    decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Поиск по саду'),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Поиск по саду',
+                    ),
                     onChanged: (v) => setState(() => _query = v),
                   ),
                 ),
@@ -104,7 +113,10 @@ class _GardenScreenState extends ConsumerState<GardenScreen> {
                     childAspectRatio: 0.74,
                   ),
                   delegate: SliverChildBuilderDelegate(
-                    (_, i) => _PlantCard(plant: plants[i], tasks: data.tasksFor(plants[i].id)),
+                    (_, i) => _PlantCard(
+                      plant: plants[i],
+                      tasks: data.tasksFor(plants[i].id),
+                    ),
                     childCount: plants.length,
                   ),
                 ),
@@ -126,41 +138,67 @@ class _PlantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final next = (tasks.where((x) => x.enabled).toList()..sort((a, b) => a.nextDue.compareTo(b.nextDue))).firstOrNull;
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => context.push('/plant/${plant.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PlantImage(plant.photoUrl, radius: 20),
-                if (next != null && next.isDue)
-                  Positioned(
-                    left: 10,
-                    top: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: p.inkButton, borderRadius: BorderRadius.circular(14)),
-                      child: Text(next.type.label,
-                          style: TextStyle(color: p.onInkButton, fontSize: 12, fontWeight: FontWeight.w800)),
+    final next =
+        (tasks.where((x) => x.enabled).toList()
+              ..sort((a, b) => a.nextDue.compareTo(b.nextDue)))
+            .firstOrNull;
+    return PressScale(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push('/plant/${plant.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PlantImage(plant.photoUrl, radius: 20),
+                  if (next != null && next.isDue)
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: p.inkButton,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          next.type.label,
+                          style: TextStyle(
+                            color: p.onInkButton,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(plant.nickname,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          if (next != null)
-            Text('${next.type.label} ${dueLabel(next)}',
+            const SizedBox(height: 8),
+            Text(
+              plant.nickname,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            if (next != null)
+              Text(
+                '${next.type.label} ${dueLabel(next)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: next.daysLeft < 0 ? p.alert : p.inkSecondary)),
-        ],
+                style: TextStyle(
+                  fontSize: 13,
+                  color: next.daysLeft < 0 ? p.alert : p.inkSecondary,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

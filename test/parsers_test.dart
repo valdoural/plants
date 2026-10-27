@@ -36,7 +36,10 @@ void main() {
     final top = r.candidates.first;
     expect(top.displayName, 'Монстера деликатесная');
     expect(top.family, 'Araceae');
-    expect(top.imageUrls, ['https://example.com/main.jpg', 'https://example.com/a.jpg']);
+    expect(top.imageUrls, [
+      'https://example.com/main.jpg',
+      'https://example.com/a.jpg',
+    ]);
     expect(top.description, 'Лиана из тропиков.');
     expect(top.suggestedWateringDays, 7);
     expect(r.candidates[1].commonNames, isEmpty);
@@ -83,7 +86,11 @@ void main() {
           'gbif': {'id': '5361900'},
           'images': [
             {
-              'url': {'o': 'https://x/o.jpg', 'm': 'https://x/m.jpg', 's': 'https://x/s.jpg'},
+              'url': {
+                'o': 'https://x/o.jpg',
+                'm': 'https://x/m.jpg',
+                's': 'https://x/s.jpg',
+              },
             },
           ],
         },

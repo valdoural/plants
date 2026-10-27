@@ -22,7 +22,11 @@ class _ReminderSchedulerState extends ConsumerState<ReminderScheduler> {
   void initState() {
     super.initState();
     if (!ReminderNotifications.supported) return;
-    ref.listenManual<AsyncValue<GardenData>>(gardenProvider, (_, next) => _sync(), fireImmediately: true);
+    ref.listenManual<AsyncValue<GardenData>>(
+      gardenProvider,
+      (_, next) => _sync(),
+      fireImmediately: true,
+    );
     ref.listenManual<AppSettings>(settingsProvider, (prev, next) {
       if (prev?.notificationsEnabled != next.notificationsEnabled ||
           prev?.reminderHour != next.reminderHour ||
@@ -37,8 +41,12 @@ class _ReminderSchedulerState extends ConsumerState<ReminderScheduler> {
     if (data == null) return;
     final s = ref.read(settingsProvider);
     try {
-      await ReminderNotifications.instance
-          .reschedule(data, enabled: s.notificationsEnabled, hour: s.reminderHour, minute: s.reminderMinute);
+      await ReminderNotifications.instance.reschedule(
+        data,
+        enabled: s.notificationsEnabled,
+        hour: s.reminderHour,
+        minute: s.reminderMinute,
+      );
     } catch (e) {
       debugPrint('Не удалось запланировать уведомления: $e');
     }
