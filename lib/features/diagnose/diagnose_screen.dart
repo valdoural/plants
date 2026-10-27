@@ -47,80 +47,93 @@ class _DiagnoseScreenState extends ConsumerState<DiagnoseScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final history = ref.watch(gardenProvider).value?.diagnoses ?? const [];
-    final t = Theme.of(context);
-    final fmt = DateFormat('d MMM, HH:mm', 'ru');
+    final p = context.palette;
+    final fmt = DateFormat('d MMMM, HH:mm', 'ru');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Диагностика')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-        children: [
-          Card(
-            color: t.colorScheme.tertiaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.healing, size: 40, color: t.colorScheme.onTertiaryContainer),
-                  const SizedBox(height: 12),
-                  Text('Что случилось с растением?',
-                      style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: t.colorScheme.onTertiaryContainer)),
-                  const SizedBox(height: 6),
-                  Text('Сфотографируйте поражённые листья или стебель крупным планом — мы определим проблему и подскажем лечение.',
-                      style: TextStyle(color: t.colorScheme.onTertiaryContainer)),
-                  const SizedBox(height: 16),
-                  if (!settings.canDiagnose)
-                    _NeedPlantIdKey()
-                  else
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _start,
-                      icon: _busy
-                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.photo_camera),
-                      label: Text(_busy ? 'Анализируем…' : 'Сделать фото'),
-                    ),
-                ],
-              ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+          children: [
+            const Text('Что с растением?',
+                style: TextStyle(fontSize: 36, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: -1)),
+            const SizedBox(height: 10),
+            Text(
+              'Сфотографируйте больное место крупно: пятна, пожелтевший лист, вредителей. '
+              'Определим вероятную причину и подскажем, как лечить.',
+              style: TextStyle(fontSize: 17, height: 1.45, color: p.inkSecondary),
             ),
-          ),
-          if (history.isNotEmpty) ...[
-            const SectionHeader('История'),
-            for (final d in history)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(8),
-                    leading: SizedBox(width: 56, height: 56, child: PlantImage(d.photoUrl, radius: 12)),
-                    title: Text(
-                      d.result.isHealthy ? 'Здоровое' : (d.result.diseases.firstOrNull?.name ?? 'Есть проблемы'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 20),
+            if (!settings.canDiagnose)
+              const _NeedPlantIdKey()
+            else
+              FilledButton.icon(
+                onPressed: _busy ? null : _start,
+                icon: _busy
+                    ? SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2, color: p.onInkButton))
+                    : const Icon(Icons.photo_camera_outlined),
+                label: Text(_busy ? 'Анализируем…' : 'Сфотографировать'),
+              ),
+            if (history.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              const Text('История', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              for (final d in history)
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push('/diagnose/result', extra: DiagnoseResultArgs(record: d)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        PlantImage(d.photoUrl, size: 60, radius: 14),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                d.result.isHealthy ? 'Растение здорово' : _cap(d.result.diseases.firstOrNull?.name ?? 'Есть проблемы'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                              Text(fmt.format(d.createdAt), style: TextStyle(fontSize: 14, color: p.inkSecondary)),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          d.result.isHealthy ? 'здорово' : 'проблема',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: d.result.isHealthy ? p.accent : p.alert,
+                          ),
+                        ),
+                      ],
                     ),
-                    subtitle: Text(fmt.format(d.createdAt)),
-                    trailing: Icon(
-                      d.result.isHealthy ? Icons.check_circle : Icons.error_outline,
-                      color: d.result.isHealthy ? context.palette.accent : context.palette.alert,
-                    ),
-                    onTap: () => context.push('/diagnose/result', extra: DiagnoseResultArgs(record: d)),
                   ),
                 ),
-              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
+String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
 class _NeedPlantIdKey extends StatelessWidget {
+  const _NeedPlantIdKey();
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Диагностика работает только через Plant.id: у Pl@ntNet нет определения болезней.'),
+        Text('Диагностика работает через Plant.id: у Pl@ntNet нет определения болезней.',
+            style: TextStyle(fontSize: 15, color: context.palette.inkSecondary)),
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: () => context.push('/settings'),

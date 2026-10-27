@@ -7,12 +7,13 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/photo_picker.dart';
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/recognition/recognition_service.dart';
 import 'identify_result_screen.dart';
 
-/// Съёмка/выбор фото → распознавание.
+/// Съёмка/выбор фото → распознавание. Видоискатель во весь экран, спуск в центре.
 class IdentifyScreen extends ConsumerStatefulWidget {
   const IdentifyScreen({super.key});
 
@@ -48,102 +49,172 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final t = Theme.of(context);
+    final p = context.palette;
     final hasKey = settings.hasKeyFor(settings.provider);
+    final full = _photos.length >= _maxPhotos;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Распознать растение'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              avatar: const Icon(Icons.swap_horiz, size: 18),
-              label: Text(settings.provider.short),
-              onPressed: () => _chooseProvider(context, settings),
-            ),
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            if (!hasKey) _MissingKeyCard(provider: settings.provider),
-            AspectRatio(
-              aspectRatio: 1,
-              child: _photos.isEmpty
-                  ? _Viewfinder(onCamera: () => _add(ImageSource.camera), onGallery: () => _add(ImageSource.gallery))
-                  : Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        PlantImage.memory(_photos.last),
-                        if (_busy) const _ScanningOverlay(),
-                      ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
+              child: Row(
+                children: [
+                  IconButton(tooltip: 'Закрыть', onPressed: () => context.pop(), icon: const Icon(Icons.close)),
+                  const Expanded(child: Text('Распознать', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                  Material(
+                    color: p.surface,
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: () => _chooseProvider(context, settings),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(settings.provider.short, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 4),
+                          Icon(Icons.expand_more, size: 18, color: p.inkSecondary),
+                        ]),
+                      ),
                     ),
+                  ),
+                ],
+              ),
             ),
-            if (_photos.isNotEmpty) ...[
-              const SizedBox(height: 12),
+            if (!hasKey) _MissingKey(provider: settings.provider),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (_photos.isEmpty)
+                        ColoredBox(color: p.surface, child: _Viewfinder(color: p.accent, hint: p.inkSecondary))
+                      else
+                        PlantImage.memory(_photos.last, radius: 0),
+                      if (_busy)
+                        const ColoredBox(
+                          color: Colors.black54,
+                          child: Center(
+                            child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 14),
+                              Text('Сравниваем с базой растений…',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                            ]),
+                          ),
+                        ),
+                      if (_photos.isNotEmpty)
+                        Positioned(
+                          left: 12,
+                          right: 12,
+                          bottom: 12,
+                          child: _Thumbs(
+                            photos: _photos,
+                            onRemove: _busy ? null : (i) => setState(() => _photos.removeAt(i)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (settings.provider == RecognitionProviderId.plantNet)
               SizedBox(
-                height: 72,
+                height: 56,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                   children: [
-                    for (var i = 0; i < _photos.length; i++)
+                    for (final o in PlantOrgan.values)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
-                        child: Stack(
-                          children: [
-                            SizedBox(width: 72, height: 72, child: PlantImage.memory(_photos[i], radius: 12)),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: _busy ? null : () => setState(() => _photos.removeAt(i)),
-                                child: const CircleAvatar(radius: 11, child: Icon(Icons.close, size: 14)),
-                              ),
-                            ),
-                          ],
+                        child: ChoiceChip(
+                          showCheckmark: false,
+                          label: Text(o.label),
+                          selected: _organ == o,
+                          onSelected: (_) => setState(() => _organ = o),
                         ),
-                      ),
-                    if (_photos.length < _maxPhotos)
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(minimumSize: const Size(72, 72), padding: EdgeInsets.zero),
-                        onPressed: _busy ? null : () => _add(ImageSource.gallery),
-                        child: const Icon(Icons.add_photo_alternate_outlined),
                       ),
                   ],
                 ),
               ),
-              Text('Можно добавить до $_maxPhotos фото одного растения — так точнее.',
-                  style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-            ],
-            if (settings.provider == RecognitionProviderId.plantNet) ...[
-              const SizedBox(height: 16),
-              Text('Что на фото?', style: t.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final o in PlantOrgan.values)
-                    ChoiceChip(label: Text(o.label), selected: _organ == o, onSelected: (_) => setState(() => _organ = o)),
-                ],
-              ),
-            ],
-            const SizedBox(height: 20),
-            const _Tips(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: _photos.isEmpty
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _add(ImageSource.gallery),
+                              icon: const Icon(Icons.photo_library_outlined),
+                              label: const Text('Галерея'),
+                            ),
+                          ),
+                        ),
+                        _Shutter(onPressed: () => _add(ImageSource.camera)),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(onPressed: () => _showTips(context), child: const Text('Как снимать')),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        IconButton.filledTonal(
+                          tooltip: full ? 'Не больше $_maxPhotos фото' : 'Добавить ещё фото',
+                          style: IconButton.styleFrom(backgroundColor: p.surface, minimumSize: const Size(54, 54)),
+                          onPressed: full || _busy ? null : () => _add(ImageSource.camera),
+                          icon: const Icon(Icons.add_a_photo_outlined),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _busy || !hasKey ? null : _identify,
+                            child: Text(_busy ? 'Распознаём…' : 'Распознать'),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
+    );
+  }
+
+  void _showTips(BuildContext context) {
+    final p = context.palette;
+    Widget tip(String title, String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(text, style: TextStyle(fontSize: 15, color: p.inkSecondary)),
+          ]),
+        );
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: FilledButton.icon(
-            onPressed: _photos.isEmpty || _busy || !hasKey ? null : _identify,
-            icon: _busy
-                ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.search),
-            label: Text(_busy ? 'Распознаём…' : 'Распознать'),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Как сделать хорошее фото', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              tip('Одно растение в кадре', 'Растение в центре и в фокусе, занимает большую часть кадра.'),
+              tip('Цветок или лист крупно', 'Это самые узнаваемые части. Добавьте 2–3 фото с разных сторон.'),
+              tip('Мягкий свет', 'Без сильных теней и бликов; у окна днём — идеально.'),
+            ],
           ),
         ),
       ),
@@ -151,18 +222,20 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   }
 
   Future<void> _chooseProvider(BuildContext context, AppSettings settings) async {
+    final p = context.palette;
     final chosen = await showModalBottomSheet<RecognitionProviderId>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final p in RecognitionProviderId.values)
+            for (final id in RecognitionProviderId.values)
               ListTile(
-                leading: Icon(p == settings.provider ? Icons.radio_button_checked : Icons.radio_button_off),
-                title: Text(p.title),
-                subtitle: Text(settings.hasKeyFor(p) ? p.pros.first : 'Ключ не задан'),
-                onTap: () => Navigator.pop(context, p),
+                leading: Icon(id == settings.provider ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: id == settings.provider ? p.accent : p.inkSecondary),
+                title: Text(id.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(settings.hasKeyFor(id) ? id.pros.first : 'Ключ не задан'),
+                onTap: () => Navigator.pop(context, id),
               ),
             const SizedBox(height: 8),
           ],
@@ -173,112 +246,168 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   }
 }
 
-class _Viewfinder extends StatelessWidget {
-  const _Viewfinder({required this.onCamera, required this.onGallery});
+/// Крупная круглая кнопка спуска, как в «Камере».
+class _Shutter extends StatelessWidget {
+  const _Shutter({required this.onPressed});
 
-  final VoidCallback onCamera;
-  final VoidCallback onGallery;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.3), width: 2),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.local_florist, size: 72, color: scheme.primary),
-          const SizedBox(height: 12),
-          const Text('Наведите камеру на растение', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FilledButton.icon(onPressed: onCamera, icon: const Icon(Icons.photo_camera), label: const Text('Камера')),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(onPressed: onGallery, icon: const Icon(Icons.photo_library), label: const Text('Галерея')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScanningOverlay extends StatelessWidget {
-  const _ScanningOverlay();
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        color: Colors.black38,
-        alignment: Alignment.center,
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 12),
-            Text('Сравниваем с базой растений…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ],
+    final p = context.palette;
+    return Semantics(
+      button: true,
+      label: 'Сфотографировать',
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: 78,
+          height: 78,
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: p.ink, width: 4)),
+          child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: p.ink)),
         ),
       ),
     );
   }
 }
 
-class _MissingKeyCard extends StatelessWidget {
-  const _MissingKeyCard({required this.provider});
+/// Пустой видоискатель: уголки рамки и подсказка.
+class _Viewfinder extends StatelessWidget {
+  const _Viewfinder({required this.color, required this.hint});
+
+  final Color color;
+  final Color hint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(padding: const EdgeInsets.all(36), child: CustomPaint(painter: _CornersPainter(color))),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(48),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.eco_outlined, size: 56, color: color),
+              const SizedBox(height: 14),
+              const Text('Наведите камеру на растение',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text('Лучше всего — цветок или лист крупным планом', textAlign: TextAlign.center, style: TextStyle(color: hint)),
+            ]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CornersPainter extends CustomPainter {
+  _CornersPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    const l = 36.0;
+    final w = size.width, h = size.height;
+    for (final (x, y, dx, dy) in [(0.0, 0.0, 1.0, 1.0), (w, 0.0, -1.0, 1.0), (0.0, h, 1.0, -1.0), (w, h, -1.0, -1.0)]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y + dy * l)
+          ..lineTo(x, y)
+          ..lineTo(x + dx * l, y),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CornersPainter old) => old.color != color;
+}
+
+class _Thumbs extends StatelessWidget {
+  const _Thumbs({required this.photos, required this.onRemove});
+
+  final List<Uint8List> photos;
+  final void Function(int)? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < photos.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: PlantImage.memory(photos[i], size: 56, radius: 12),
+                ),
+                if (onRemove != null)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Material(
+                      color: Colors.black87,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => onRemove!(i),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.close, size: 14, color: Colors.white, semanticLabel: 'Убрать фото'),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MissingKey extends StatelessWidget {
+  const _MissingKey({required this.provider});
 
   final RecognitionProviderId provider;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.tertiaryContainer,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        leading: const Icon(Icons.key),
-        title: Text('Нужен API-ключ ${provider.short}'),
-        subtitle: const Text('Добавьте ключ в настройках — это займёт пару минут.'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => context.push('/settings'),
-      ),
-    );
-  }
-}
-
-class _Tips extends StatelessWidget {
-  const _Tips();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    Widget tip(IconData i, String s) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(children: [
-            Icon(i, size: 20, color: t.colorScheme.primary),
-            const SizedBox(width: 10),
-            Expanded(child: Text(s)),
-          ]),
-        );
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Как сделать хорошее фото', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            tip(Icons.center_focus_strong, 'Растение в центре и в фокусе, занимает большую часть кадра'),
-            tip(Icons.wb_sunny_outlined, 'Хорошее освещение, без сильных теней'),
-            tip(Icons.local_florist_outlined, 'Цветок или лист крупным планом — лучше всего'),
-          ],
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Material(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => context.push('/settings'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Нужен API-ключ ${provider.short}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  Text('Добавьте его в настройках — пара минут.', style: TextStyle(color: p.inkSecondary)),
+                ]),
+              ),
+              Icon(Icons.chevron_right, color: p.inkSecondary),
+            ]),
+          ),
         ),
       ),
     );

@@ -24,46 +24,86 @@ class DiagnoseResultScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final r = args.record.result;
-    final t = Theme.of(context);
+    final p = context.palette;
     final healthy = r.isHealthy;
-    final statusColor = healthy ? context.palette.accent : context.palette.alert;
     final diseases = r.diseases.where((d) => d.probability >= 0.05).toList();
+    final photoHeight = (MediaQuery.sizeOf(context).height * 0.42).clamp(260.0, 400.0);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Результат диагностики')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-        children: [
-          SizedBox(
-            height: 220,
-            child: args.photo != null ? PlantImage.memory(args.photo!) : PlantImage(args.record.photoUrl),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: Icon(healthy ? Icons.check_circle : Icons.warning_amber_rounded, color: statusColor, size: 36),
-              title: Text(healthy ? 'Растение выглядит здоровым' : 'Обнаружены признаки проблем',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Вероятность, что растение здорово: ${(r.healthyProbability * 100).round()}%'),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: photoHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  args.photo != null ? PlantImage.memory(args.photo!, radius: 0) : PlantImage(args.record.photoUrl, radius: 0),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: -1,
+                    height: 29,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(color: p.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
+                    ),
+                  ),
+                  SafeArea(
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: IconButton.filled(
+                          tooltip: 'Назад',
+                          style: IconButton.styleFrom(backgroundColor: p.bg.withValues(alpha: 0.7), foregroundColor: p.ink),
+                          onPressed: () => Navigator.of(context).maybePop(),
+                          icon: const Icon(Icons.arrow_back),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          if (diseases.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Text(healthy ? 'Возможные слабые признаки' : 'Вероятные причины',
-                style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            for (final (i, d) in diseases.indexed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _DiseaseCard(disease: d, initiallyExpanded: i == 0 && !healthy),
-              ),
-          ],
-          const SizedBox(height: 16),
-          if (args.record.plantId == null) _AttachToPlant(record: args.record),
-          const SizedBox(height: 12),
-          Text(
-            'Результат автоматический и может ошибаться. При серьёзных проблемах проконсультируйтесь со специалистом.',
-            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+            sliver: SliverList.list(
+              children: [
+                Text(
+                  'Здоровье ${(r.healthyProbability * 100).round()}%',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: healthy ? p.accent : p.alert),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  healthy ? 'Растение выглядит здоровым' : _cap(diseases.firstOrNull?.name ?? 'Есть признаки проблем'),
+                  style: const TextStyle(fontSize: 32, height: 1.12, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+                ),
+                if (!healthy && diseases.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text('Вероятность ${(diseases.first.probability * 100).round()}%. Подробности и лечение — ниже.',
+                      style: TextStyle(fontSize: 16, color: p.inkSecondary)),
+                ],
+                if (diseases.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Text(healthy ? 'Возможные слабые признаки' : 'Вероятные причины',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 10),
+                  for (final (i, d) in diseases.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _DiseaseCard(disease: d, initiallyExpanded: i == 0 && !healthy),
+                    ),
+                ],
+                const SizedBox(height: 16),
+                if (args.record.plantId == null) _AttachToPlant(record: args.record),
+                const SizedBox(height: 16),
+                Text(
+                  'Результат автоматический и может ошибаться. При серьёзных проблемах проконсультируйтесь со специалистом.',
+                  style: TextStyle(fontSize: 13, color: p.inkSecondary),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -79,7 +119,7 @@ class _DiseaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
+    final p = context.palette;
     Widget section(String title, IconData icon, List<String> items) => items.isEmpty
         ? const SizedBox.shrink()
         : Padding(
@@ -88,7 +128,7 @@ class _DiseaseCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Icon(icon, size: 18, color: t.colorScheme.primary),
+                  Icon(icon, size: 18, color: p.accent),
                   const SizedBox(width: 6),
                   Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
                 ]),
@@ -104,7 +144,9 @@ class _DiseaseCard extends StatelessWidget {
         leading: disease.imageUrls.isEmpty
             ? const Icon(Icons.coronavirus_outlined)
             : SizedBox(width: 48, height: 48, child: PlantImage(disease.imageUrls.first, radius: 10)),
-        title: Text(_cap(disease.name), style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(_cap(disease.name), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        iconColor: p.inkSecondary,
+        collapsedIconColor: p.inkSecondary,
         trailing: ConfidenceBadge(disease.probability),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
