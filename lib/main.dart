@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/brand.dart';
 import 'core/reminder_scheduler.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
@@ -72,6 +73,7 @@ class LeafyApp extends ConsumerStatefulWidget {
 class _LeafyAppState extends ConsumerState<LeafyApp> {
   late final _router = buildRouter(showOnboarding: widget.showOnboarding);
   final _messenger = GlobalKey<ScaffoldMessengerState>();
+  var _intro = true;
 
   @override
   void initState() {
@@ -98,7 +100,20 @@ class _LeafyAppState extends ConsumerState<LeafyApp> {
       supportedLocales: const [Locale('ru'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: _router,
-      builder: (_, child) => ReminderScheduler(child: child!),
+      builder: (_, child) => ReminderScheduler(
+        child: Stack(
+          children: [
+            child!,
+            // Заставка поверх уже загруженного приложения: по окончании просто убирается.
+            if (_intro)
+              Positioned.fill(
+                child: IntroSplash(
+                  onDone: () => setState(() => _intro = false),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

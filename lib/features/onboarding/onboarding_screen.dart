@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/brand.dart';
 import '../../core/settings.dart';
 import '../../core/theme.dart';
 
@@ -19,7 +20,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   static const _slides = [
     (
-      Icons.center_focus_strong,
+      null,
       'Узнайте любое растение',
       'Сфотографируйте цветок, лист или дерево — Leafy подскажет, что это за вид.',
     ),
@@ -74,7 +75,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(icon, size: 96, color: p.accent),
+                          icon == null
+                              ? const LeafyMark(size: 112)
+                              : Icon(icon, size: 96, color: p.accent),
                           const SizedBox(height: 40),
                           Text(
                             title,
