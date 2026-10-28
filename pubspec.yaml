@@ -52,6 +52,7 @@ dependencies:
   geolocator: ^14.0.1
   camera: ^0.12.1
   exif: ^3.3.0
+  image: ^4.12.0
 
 dev_dependencies:
   flutter_test:

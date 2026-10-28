@@ -225,7 +225,7 @@ class CatalogScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (kind == CatalogKind.toxic)
+                    if (kind.note case final note?)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
                         padding: const EdgeInsets.all(14),
@@ -234,8 +234,7 @@ class CatalogScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'Не пробуйте растения на вкус и мойте руки после работы с ними. Борщевик Сосновского вызывает ожоги на солнце. '
-                          'При отравлении звоните 103 или 112.',
+                          note,
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.4,
@@ -312,6 +311,26 @@ class TaxonScreen extends ConsumerWidget {
         data: (t) {
           final photos = t.photos.isNotEmpty ? t.photos : [?t.photoUrl];
           final toxic = t.isIn(CatalogKind.toxicIds);
+          final warnings = [
+            if (toxic)
+              (
+                Icons.warning_amber_rounded,
+                p.alert,
+                'Ядовитое растение. Держите подальше от детей и животных, работайте в перчатках.',
+              ),
+            if (t.isIn(CatalogKind.allergenIds))
+              (
+                Icons.air,
+                p.water,
+                'Сильный аллерген: в сезон пыления может вызывать насморк и слезотечение.',
+              ),
+            if (t.isIn(CatalogKind.invasiveIds))
+              (
+                Icons.do_not_disturb_on_outlined,
+                p.alert,
+                'Инвазивный вид: быстро захватывает территорию и вытесняет местные растения. Не сажайте и не распространяйте семена.',
+              ),
+          ];
           final wide = !context.windowSize.isCompact;
           final hero = SizedBox(
             height: wide
@@ -353,7 +372,7 @@ class TaxonScreen extends ConsumerWidget {
                   color: p.inkSecondary,
                 ),
               ),
-              if (toxic) ...[
+              for (final (icon, color, text) in warnings) ...[
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -364,12 +383,12 @@ class TaxonScreen extends ConsumerWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: p.alert),
+                      Icon(icon, color: color),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Ядовитое растение. Держите подальше от детей и животных, работайте в перчатках.',
-                          style: TextStyle(fontSize: 15, height: 1.4),
+                          text,
+                          style: const TextStyle(fontSize: 15, height: 1.4),
                         ),
                       ),
                     ],

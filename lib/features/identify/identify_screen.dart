@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/crop_screen.dart';
 import '../../core/live_camera.dart';
 import '../../core/photo_picker.dart';
 import '../../core/settings.dart';
@@ -14,6 +15,7 @@ import '../../data/garden_controller.dart';
 import '../../data/recognition/recognition_service.dart';
 import '../diagnose/diagnose_result_screen.dart';
 import 'identify_result_screen.dart';
+import 'photo_guide.dart';
 
 enum CameraMode { identify, diagnose }
 
@@ -260,6 +262,25 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                             ],
                           ),
                         ),
+                      if (!showLive && _photos.isNotEmpty && !_busy)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: _RoundIcon(
+                            icon: Icons.crop,
+                            tooltip: 'Кадрировать',
+                            onTap: () async {
+                              final last = _photos.length - 1;
+                              final cropped = await cropPhoto(
+                                context,
+                                _photos[last],
+                              );
+                              if (cropped != null && mounted) {
+                                setState(() => _photos[last] = cropped);
+                              }
+                            },
+                          ),
+                        ),
                       if (_busy)
                         ColoredBox(
                           color: Colors.black54,
@@ -352,7 +373,7 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                                     child: const Text('Готово'),
                                   )
                                 : TextButton(
-                                    onPressed: () => _showTips(context),
+                                    onPressed: () => showPhotoGuide(context),
                                     child: const Text('Как снимать'),
                                   ),
                           ),
@@ -403,55 +424,6 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _showTips(BuildContext context) {
-    final p = context.palette;
-    Widget tip(String title, String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Text(text, style: TextStyle(fontSize: 15, color: p.inkSecondary)),
-        ],
-      ),
-    );
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Как сделать хорошее фото',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 16),
-              tip(
-                'Одно растение в кадре',
-                'Растение в центре и в фокусе, занимает большую часть кадра.',
-              ),
-              tip(
-                'Цветок или лист крупно',
-                'Это самые узнаваемые части. Добавьте 2–3 фото с разных сторон.',
-              ),
-              tip(
-                'Мягкий свет',
-                'Без сильных теней и бликов; у окна днём — идеально.',
-              ),
-            ],
-          ),
         ),
       ),
     );

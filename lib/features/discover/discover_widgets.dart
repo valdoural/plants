@@ -586,15 +586,21 @@ class CatalogTiles extends ConsumerWidget {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, c) {
-            final cols = c.maxWidth < 560 ? 2 : (c.maxWidth < 900 ? 3 : 5);
+            const kinds = CatalogKind.values;
+            final cols = c.maxWidth < 560 ? 2 : (c.maxWidth < 900 ? 3 : 4);
             final w = (c.maxWidth - (cols - 1) * 12) / cols;
+            // Часть плиток растягивается на две колонки, чтобы ряды заполнились без дыр:
+            // в ряду с широкой плиткой — она и ещё cols−2 обычных.
+            final extra = (cols - kinds.length % cols) % cols;
+            final wideAt = {for (var j = 0; j < extra; j++) j * (cols - 1)};
             return Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                for (final k in CatalogKind.values)
+                for (final (i, k) in kinds.indexed)
                   SizedBox(
-                    width: w,
+                    width: wideAt.contains(i) ? w * 2 + 12 : w,
+                    height: w / 0.9,
                     child: _CatalogTile(kind: k),
                   ),
               ],
@@ -622,8 +628,7 @@ class _CatalogTile extends ConsumerWidget {
           orElse: () => const InatTaxon(id: 0, name: ''),
         );
     return PressScale(
-      child: AspectRatio(
-        aspectRatio: 0.9,
+      child: SizedBox.expand(
         child: Material(
           color: p.surface,
           borderRadius: BorderRadius.circular(20),
