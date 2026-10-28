@@ -70,36 +70,41 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _index = i),
                 children: [
                   for (final (icon, title, text) in _slides)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          icon == null
-                              ? const LeafyMark(size: 112)
-                              : Icon(icon, size: 96, color: p.accent),
-                          const SizedBox(height: 40),
-                          Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 32,
-                              height: 1.1,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.8,
-                            ),
+                    LayoutBuilder(
+                      builder: (context, c) => SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: c.maxHeight),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              icon == null
+                                  ? const LeafyMark(size: 112)
+                                  : Icon(icon, size: 96, color: p.accent),
+                              const SizedBox(height: 40),
+                              Text(
+                                title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 30,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                text,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: p.inkSecondary,
+                                  fontSize: 17,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            text,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: p.inkSecondary,
-                              fontSize: 17,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                 ],

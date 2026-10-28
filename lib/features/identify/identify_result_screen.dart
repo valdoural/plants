@@ -153,7 +153,7 @@ class IdentifyResultScreen extends ConsumerWidget {
                   Text(
                     top.displayName,
                     style: const TextStyle(
-                      fontSize: 32,
+                      fontSize: 30,
                       height: 1.12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.8,
@@ -249,45 +249,48 @@ class IdentifyResultScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     for (final c in record.candidates.skip(1))
-                      InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => open(c),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              PlantImage(
-                                c.imageUrls.firstOrNull,
-                                size: 56,
-                                radius: 14,
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      c.displayName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      c.scientificName,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontStyle: FontStyle.italic,
-                                        color: p.inkSecondary,
-                                      ),
-                                    ),
-                                  ],
+                      PressScale(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => open(c),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: [
+                                PlantImage(
+                                  c.imageUrls.firstOrNull,
+                                  size: 56,
+                                  radius: 14,
                                 ),
-                              ),
-                              ConfidenceBadge(c.probability),
-                            ],
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        c.displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        c.scientificName,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontStyle: FontStyle.italic,
+                                          color: p.inkSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ConfidenceBadge(c.probability),
+                              ],
+                            ),
                           ),
                         ),
                       ),

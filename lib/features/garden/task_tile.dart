@@ -22,6 +22,17 @@ class TaskTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        // На узкой плитке и при крупном шрифте «Завтра» сворачивается в значок.
+        final narrow =
+            c.maxWidth < 330 * MediaQuery.textScalerOf(context).scale(1);
+        return _tile(context, ref, narrow: narrow);
+      },
+    );
+  }
+
+  Widget _tile(BuildContext context, WidgetRef ref, {required bool narrow}) {
     final p = context.palette;
     final overdue = task.daysLeft < 0;
     final garden = ref.read(gardenProvider.notifier);
@@ -84,7 +95,7 @@ class TaskTile extends ConsumerWidget {
                   ),
                 ),
                 if (task.isDue)
-                  withPlant
+                  withPlant && !narrow
                       ? TextButton(
                           onPressed: () => garden.snoozeTask(task),
                           style: TextButton.styleFrom(

@@ -157,11 +157,14 @@ class _WeatherBody extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                'влажность ${weather.humidity.round()}%',
-                style: TextStyle(color: p.inkSecondary, fontSize: 15),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  'влажность ${weather.humidity.round()}%',
+                  maxLines: 2,
+                  style: TextStyle(color: p.inkSecondary, fontSize: 15),
+                ),
               ),
             ),
           ],
@@ -354,6 +357,12 @@ class TaxonTile extends StatelessWidget {
   final InatTaxon taxon;
   final double width;
 
+  /// Высота плитки с учётом системного размера шрифта: фото + две строки названия + латынь + счётчик.
+  static double heightFor(BuildContext context, double width) {
+    final t = MediaQuery.textScalerOf(context);
+    return width + 8 + t.scale(14) * 1.2 * 2 + t.scale(12) * 1.4 * 2 + 6;
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -423,6 +432,8 @@ class TaxonTile extends StatelessWidget {
               if (taxon.count != null)
                 Text(
                   _obs(taxon.count!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     color: p.accent,
@@ -499,24 +510,35 @@ class TaxonShelf extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         items.when(
-          loading: () => SizedBox(
-            height: 210,
-            child: Row(
-              children: [
-                for (var i = 0; i < 3; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Container(
-                      width: 148,
-                      height: 148,
-                      decoration: BoxDecoration(
-                        color: p.surface,
-                        borderRadius: BorderRadius.circular(18),
+          loading: () => LayoutBuilder(
+            builder: (context, c) {
+              final w = compact ? 148.0 : 170.0;
+              final n = (c.maxWidth / (w + 12)).floor().clamp(1, 8);
+              return SizedBox(
+                height: TaxonTile.heightFor(context, w),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < n; i++) ...[
+                      if (i > 0) const SizedBox(width: 12),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: p.surface,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
           error: (e, _) => Text(
             'Не удалось загрузить: $e',
@@ -532,7 +554,7 @@ class TaxonShelf extends StatelessWidget {
             }
             if (compact) {
               return SizedBox(
-                height: 236,
+                height: TaxonTile.heightFor(context, 148),
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: shown.length,

@@ -34,7 +34,7 @@ class _DiagnoseScreenState extends ConsumerState<DiagnoseScreen> {
             const Text(
               'Что с растением?',
               style: TextStyle(
-                fontSize: 36,
+                fontSize: 34,
                 height: 1.1,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -1,
@@ -85,55 +85,57 @@ class _DiagnoseScreenState extends ConsumerState<DiagnoseScreen> {
               ),
               const SizedBox(height: 8),
               for (final d in history)
-                InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push(
-                    '/diagnose/result',
-                    extra: DiagnoseResultArgs(record: d),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        PlantImage(d.photoUrl, size: 60, radius: 14),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                d.result.isHealthy
-                                    ? 'Растение здорово'
-                                    : _cap(
-                                        d.result.diseases.firstOrNull?.name ??
-                                            'Есть проблемы',
-                                      ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
+                PressScale(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => context.push(
+                      '/diagnose/result',
+                      extra: DiagnoseResultArgs(record: d),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          PlantImage(d.photoUrl, size: 60, radius: 14),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  d.result.isHealthy
+                                      ? 'Растение здорово'
+                                      : _cap(
+                                          d.result.diseases.firstOrNull?.name ??
+                                              'Есть проблемы',
+                                        ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                fmt.format(d.createdAt),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: p.inkSecondary,
+                                Text(
+                                  fmt.format(d.createdAt),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: p.inkSecondary,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        Text(
-                          d.result.isHealthy ? 'здорово' : 'проблема',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: d.result.isHealthy ? p.accent : p.alert,
+                          Text(
+                            d.result.isHealthy ? 'здорово' : 'проблема',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: d.result.isHealthy ? p.accent : p.alert,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

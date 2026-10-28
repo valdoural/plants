@@ -645,36 +645,38 @@ class _MissingKey extends StatelessWidget {
     final p = context.palette;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: Material(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
+      child: PressScale(
+        child: Material(
+          color: p.surface,
           borderRadius: BorderRadius.circular(18),
-          onTap: () => context.push('/settings'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Нужен API-ключ ${provider.short}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => context.push('/settings'),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Нужен API-ключ ${provider.short}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Добавьте его в настройках — пара минут.',
-                        style: TextStyle(color: p.inkSecondary),
-                      ),
-                    ],
+                        Text(
+                          'Добавьте его в настройках — пара минут.',
+                          style: TextStyle(color: p.inkSecondary),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(Icons.chevron_right, color: p.inkSecondary),
-              ],
+                  Icon(Icons.chevron_right, color: p.inkSecondary),
+                ],
+              ),
             ),
           ),
         ),

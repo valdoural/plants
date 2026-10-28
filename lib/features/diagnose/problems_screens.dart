@@ -305,7 +305,7 @@ class _CareSurveyScreenState extends ConsumerState<CareSurveyScreen> {
             gap,
             const Text(
               'Что заметно на растении',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             for (final part in PlantPart.values) ...[
               const SizedBox(height: 14),

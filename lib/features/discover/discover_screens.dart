@@ -113,54 +113,56 @@ class _PlantSearchScreenState extends ConsumerState<PlantSearchScreen> {
                     : Column(
                         children: [
                           for (final t in list)
-                            InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => widget.pick
-                                  ? context.pop(t)
-                                  : context.push('/taxon/${t.id}'),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  children: [
-                                    PlantImage(
-                                      t.photoUrl,
-                                      size: 64,
-                                      radius: 14,
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            t.displayName,
-                                            style: const TextStyle(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          Text(
-                                            t.name,
-                                            style: TextStyle(
-                                              fontStyle: FontStyle.italic,
-                                              color: p.inkSecondary,
-                                            ),
-                                          ),
-                                        ],
+                            PressScale(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => widget.pick
+                                    ? context.pop(t)
+                                    : context.push('/taxon/${t.id}'),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      PlantImage(
+                                        t.photoUrl,
+                                        size: 64,
+                                        radius: 14,
                                       ),
-                                    ),
-                                    if (t.isIn(CatalogKind.toxicIds))
-                                      Text(
-                                        'ядовито',
-                                        style: TextStyle(
-                                          color: p.alert,
-                                          fontWeight: FontWeight.w800,
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              t.displayName,
+                                              style: const TextStyle(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            Text(
+                                              t.name,
+                                              style: TextStyle(
+                                                fontStyle: FontStyle.italic,
+                                                color: p.inkSecondary,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                  ],
+                                      if (t.isIn(CatalogKind.toxicIds))
+                                        Text(
+                                          'ядовито',
+                                          style: TextStyle(
+                                            color: p.alert,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -357,7 +359,7 @@ class TaxonScreen extends ConsumerWidget {
               Text(
                 t.displayName,
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 30,
                   height: 1.12,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.8,

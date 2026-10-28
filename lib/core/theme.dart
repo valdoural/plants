@@ -139,43 +139,59 @@ ThemeData buildTheme(Brightness brightness) {
     brightness: brightness,
     fontFamily: _font,
   );
-  final text = base.textTheme
-      .apply(bodyColor: p.ink, displayColor: p.ink)
-      .copyWith(
-        displaySmall: base.textTheme.displaySmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -1,
-          color: p.ink,
-        ),
-        headlineMedium: base.textTheme.headlineMedium?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.8,
-          color: p.ink,
-        ),
-        headlineSmall: base.textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
-          color: p.ink,
-        ),
-        titleLarge: base.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: p.ink,
-        ),
-        titleMedium: base.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: p.ink,
-        ),
-        bodyLarge: base.textTheme.bodyLarge?.copyWith(
-          fontSize: 17,
-          height: 1.4,
-          color: p.ink,
-        ),
-        bodyMedium: base.textTheme.bodyMedium?.copyWith(
-          fontSize: 15,
-          height: 1.4,
-          color: p.ink,
-        ),
-      );
+  // Шкала шрифтов Leafy (как в iOS): 34 крупный заголовок · 30 заголовок экрана · 22 заголовок листа ·
+  // 20 раздел · 17 акцентный текст · 16 основной · 15 вторичный · 14 подпись · 13 сноска · 12 и 11 мелкие метки.
+  // Отдельно: 40 — заголовок страницы на компьютере, 52 — температура в карточке погоды.
+  TextStyle? s(
+    TextStyle? t,
+    double size,
+    FontWeight w, {
+    double? spacing,
+    double? height,
+  }) => t?.copyWith(
+    fontSize: size,
+    fontWeight: w,
+    letterSpacing: spacing,
+    height: height,
+    color: p.ink,
+  );
+  final t = base.textTheme.apply(bodyColor: p.ink, displayColor: p.ink);
+  final text = t.copyWith(
+    displaySmall: s(
+      t.displaySmall,
+      34,
+      FontWeight.w800,
+      spacing: -1,
+      height: 1.1,
+    ),
+    headlineMedium: s(
+      t.headlineMedium,
+      30,
+      FontWeight.w800,
+      spacing: -0.8,
+      height: 1.12,
+    ),
+    headlineSmall: s(
+      t.headlineSmall,
+      22,
+      FontWeight.w800,
+      spacing: -0.4,
+      height: 1.2,
+    ),
+    titleLarge: s(t.titleLarge, 20, FontWeight.w800, height: 1.25),
+    titleMedium: s(t.titleMedium, 17, FontWeight.w700, height: 1.3),
+    titleSmall: s(t.titleSmall, 15, FontWeight.w700, height: 1.3),
+    bodyLarge: s(t.bodyLarge, 16, FontWeight.w400, height: 1.45),
+    bodyMedium: s(t.bodyMedium, 15, FontWeight.w400, height: 1.4),
+    bodySmall: t.bodySmall?.copyWith(
+      fontSize: 13,
+      height: 1.35,
+      color: p.inkSecondary,
+    ),
+    labelLarge: s(t.labelLarge, 15, FontWeight.w700),
+    labelMedium: s(t.labelMedium, 13, FontWeight.w600),
+    labelSmall: s(t.labelSmall, 11, FontWeight.w600),
+  );
   const pill = StadiumBorder();
 
   return base.copyWith(
@@ -215,7 +231,7 @@ ThemeData buildTheme(Brightness brightness) {
           fontWeight: FontWeight.w700,
           fontSize: 17,
         ),
-      ),
+      ).copyWith(foregroundBuilder: _pressScale),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
@@ -229,7 +245,7 @@ ThemeData buildTheme(Brightness brightness) {
           fontWeight: FontWeight.w600,
           fontSize: 16,
         ),
-      ),
+      ).copyWith(foregroundBuilder: _pressScale),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
@@ -239,10 +255,11 @@ ThemeData buildTheme(Brightness brightness) {
           fontWeight: FontWeight.w700,
           fontSize: 15,
         ),
-      ),
+      ).copyWith(foregroundBuilder: _pressScale),
     ),
     iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(foregroundColor: p.ink),
+      style: IconButton.styleFrom(foregroundColor: p.ink)
+          .copyWith(foregroundBuilder: _pressScale),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -337,5 +354,21 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     badgeTheme: BadgeThemeData(backgroundColor: p.accent, textColor: p.bg),
     dividerTheme: DividerThemeData(color: p.surfaceHigh, thickness: 1),
+  );
+}
+
+/// Мягкий отклик кнопок: содержимое чуть сжимается, пока кнопку держат.
+Widget _pressScale(
+  BuildContext context,
+  Set<WidgetState> states,
+  Widget? child,
+) {
+  final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+  final down = states.contains(WidgetState.pressed) && !reduce;
+  return AnimatedScale(
+    scale: down ? 0.94 : 1,
+    duration: Duration(milliseconds: down ? 110 : 240),
+    curve: down ? Curves.easeOut : Curves.easeOutBack,
+    child: child,
   );
 }

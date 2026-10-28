@@ -120,7 +120,8 @@ class HomeScreen extends ConsumerWidget {
       ...recentBlock,
     ];
 
-    if (size.isCompact) {
+    // Две колонки — только на широких экранах; на планшете колонки были бы слишком узкими.
+    if (size != WindowSize.expanded) {
       return Scaffold(
         body: RefreshIndicator(
           onRefresh: () => ref.refresh(gardenProvider.future),
@@ -139,7 +140,7 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _Heading('Для вас'),
+                    const _Heading('Для вас', large: true),
                     // На телефоне порядок: задачи → поиск → регион и советы → тенденции → каталог.
                     ...tasks,
                     if (tasks.isNotEmpty) gap(),
@@ -177,7 +178,7 @@ class HomeScreen extends ConsumerWidget {
                     Text(
                       'Для вас',
                       style: TextStyle(
-                        fontSize: size == WindowSize.expanded ? 40 : 32,
+                        fontSize: 40,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -1,
                       ),
@@ -200,7 +201,7 @@ class HomeScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        SizedBox(width: size == WindowSize.expanded ? 40 : 24),
+                        const SizedBox(width: 40),
                         Expanded(
                           flex: 7,
                           child: Column(
@@ -236,25 +237,29 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _Heading extends StatelessWidget {
-  const _Heading(this.title, {this.action, this.onAction});
+  const _Heading(this.title, {this.action, this.onAction, this.large = false});
 
   final String title;
   final String? action;
   final VoidCallback? onAction;
 
+  /// Заголовок страницы («Для вас»), а не раздела.
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 10),
+      padding: EdgeInsets.only(top: large ? 12 : 8, bottom: large ? 14 : 10),
       child: Row(
         children: [
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 22,
+              style: TextStyle(
+                fontSize: large ? 30 : 20,
+                height: 1.15,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
+                letterSpacing: large ? -0.8 : -0.2,
               ),
             ),
           ),
@@ -275,8 +280,10 @@ class _TileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (context.windowSize.isCompact) {
+      final t = MediaQuery.textScalerOf(context);
       return SizedBox(
-        height: 176,
+        // Фото 112 + название в одну строку + подпись в две, с учётом размера шрифта.
+        height: 112 + 8 + t.scale(14) * 1.45 + t.scale(13) * 1.45 * 2 + 4,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: children.length,
@@ -453,39 +460,63 @@ class _Hero extends ConsumerWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  kicker,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: p.accent,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  headline,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 36,
-                    height: 1.1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1,
-                  ),
-                ),
-                if (line != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    line,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                // Нижний блок прижат к низу; при очень крупном системном шрифте ужимается, а не вылезает за фото.
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: LayoutBuilder(
+                      builder: (context, c) => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.bottomLeft,
+                        child: SizedBox(
+                          width: c.maxWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                kicker,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: p.accent,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                headline,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 34,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                              if (line != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  line,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: actions,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ],
-                const SizedBox(height: 16),
-                Wrap(spacing: 10, runSpacing: 10, children: actions),
+                ),
               ],
             ),
           ),

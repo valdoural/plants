@@ -134,7 +134,7 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: t.textTheme.headlineSmall?.copyWith(fontSize: 24),
+              style: t.textTheme.headlineSmall?.copyWith(fontSize: 22),
               textAlign: TextAlign.center,
             ),
             if (message != null) ...[

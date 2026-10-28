@@ -41,28 +41,30 @@ class HistoryScreen extends ConsumerWidget {
                       .deleteIdentification(r.id),
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(8),
-                        leading: SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: PlantImage(r.photoUrl, radius: 12),
-                        ),
-                        title: Text(
-                          r.top?.displayName ?? 'Не распознано',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          '${fmt.format(r.createdAt)} · ${r.provider}',
-                        ),
-                        trailing: r.top == null
-                            ? null
-                            : ConfidenceBadge(r.top!.probability),
-                        onTap: () => context.push(
-                          '/identify/result',
-                          extra: IdentifyResultArgs(record: r),
+                    child: PressScale(
+                      child: Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(8),
+                          leading: SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: PlantImage(r.photoUrl, radius: 12),
+                          ),
+                          title: Text(
+                            r.top?.displayName ?? 'Не распознано',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${fmt.format(r.createdAt)} · ${r.provider}',
+                          ),
+                          trailing: r.top == null
+                              ? null
+                              : ConfidenceBadge(r.top!.probability),
+                          onTap: () => context.push(
+                            '/identify/result',
+                            extra: IdentifyResultArgs(record: r),
+                          ),
                         ),
                       ),
                     ),

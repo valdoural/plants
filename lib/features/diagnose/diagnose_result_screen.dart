@@ -100,7 +100,7 @@ class DiagnoseResultScreen extends ConsumerWidget {
                           diseases.firstOrNull?.name ?? 'Есть признаки проблем',
                         ),
                   style: const TextStyle(
-                    fontSize: 32,
+                    fontSize: 30,
                     height: 1.12,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.8,

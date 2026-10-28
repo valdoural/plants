@@ -140,82 +140,84 @@ class _ProviderCardState extends State<ProviderCard> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final p = widget.provider;
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: widget.selected ? t.colorScheme.primary : Colors.transparent,
-          width: 2,
+    return PressScale(
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: widget.selected ? t.colorScheme.primary : Colors.transparent,
+            width: 2,
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: widget.onSelect,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    widget.selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: t.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      p.title,
-                      style: t.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+        child: InkWell(
+          onTap: widget.onSelect,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      widget.selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: t.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p.title,
+                        style: t.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
+                    if (widget.apiKey.isNotEmpty)
+                      Icon(
+                        Icons.vpn_key,
+                        size: 18,
+                        color: context.palette.accent,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                for (final s in p.pros)
+                  _Point(
+                    icon: Icons.check,
+                    color: context.palette.accent,
+                    text: s,
                   ),
-                  if (widget.apiKey.isNotEmpty)
-                    Icon(
-                      Icons.vpn_key,
-                      size: 18,
-                      color: context.palette.accent,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              for (final s in p.pros)
-                _Point(
-                  icon: Icons.check,
-                  color: context.palette.accent,
-                  text: s,
-                ),
-              for (final s in p.cons)
-                _Point(
-                  icon: Icons.info_outline,
-                  color: t.colorScheme.tertiary,
-                  text: s,
-                ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _key,
-                obscureText: _obscure,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: InputDecoration(
-                  labelText: 'API-ключ ${p.short}',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+                for (final s in p.cons)
+                  _Point(
+                    icon: Icons.info_outline,
+                    color: t.colorScheme.tertiary,
+                    text: s,
                   ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _key,
+                  obscureText: _obscure,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    labelText: 'API-ключ ${p.short}',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  onChanged: widget.onKeyChanged,
                 ),
-                onChanged: widget.onKeyChanged,
-              ),
-              TextButton.icon(
-                onPressed: () => openLink(p.keyUrl),
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: Text('Получить ключ: ${Uri.parse(p.keyUrl).host}'),
-              ),
-            ],
+                TextButton.icon(
+                  onPressed: () => openLink(p.keyUrl),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text('Получить ключ: ${Uri.parse(p.keyUrl).host}'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
