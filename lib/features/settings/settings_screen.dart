@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/notifications.dart';
 import '../../core/settings.dart';
+import '../../data/recognition/quota.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
@@ -181,6 +182,28 @@ class _ProviderCardState extends State<ProviderCard> {
                       ),
                   ],
                 ),
+                if (widget.apiKey.isNotEmpty)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final q = ref.watch(quotaProvider(p)).value;
+                      if (q == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 32),
+                        child: Text(
+                          q.exhausted
+                              ? 'Лимит исчерпан (${q.total} ${q.period})'
+                              : 'Осталось ${q.remaining} из ${q.total} ${q.period}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: q.low
+                                ? context.palette.alert
+                                : context.palette.inkSecondary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 const SizedBox(height: 10),
                 for (final s in p.pros)
                   _Point(

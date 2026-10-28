@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/settings.dart';
 import '../models.dart';
+import '../../core/photo_normalize.dart';
 import 'plant_id_parser.dart';
 import 'plantnet_parser.dart';
 
@@ -25,14 +26,35 @@ enum PlantOrgan {
   final String label;
 }
 
+enum RecognitionErrorKind {
+  limit,
+  key,
+  domain,
+  network,
+  timeout,
+  emptyPhoto,
+  server,
+}
+
 class RecognitionException implements Exception {
-  RecognitionException(this.message, {this.provider});
+  RecognitionException(
+    this.message, {
+    this.provider,
+    this.kind = RecognitionErrorKind.server,
+    this.detail,
+  });
+
+  /// Коротко, для всплывающего сообщения.
   final String message;
+  final RecognitionErrorKind kind;
+
+  /// Технические подробности (код ответа, текст ошибки) — для «Подробнее».
+  final String? detail;
 
   /// Какой сервис не ответил — чтобы предложить попробовать другой.
   final RecognitionProviderId? provider;
   @override
-  String toString() => message;
+  String toString() => detail == null ? message : '$message ($detail)';
 }
 
 final recognitionServiceProvider = Provider<RecognitionService>((ref) {
@@ -69,6 +91,7 @@ class RecognitionService {
   }) async {
     final id = provider ?? settings.provider;
     _requireKey(id);
+    images = await _normalize(images);
     switch (id) {
       case RecognitionProviderId.plantId:
         final json = await _plantIdPost(
@@ -86,9 +109,11 @@ class RecognitionService {
   Future<HealthResult> diagnose(List<Uint8List> images) async {
     if (!settings.canDiagnose) {
       throw RecognitionException(
-        'Диагностика работает через Plant.id. Добавьте ключ Plant.id в настройках.',
+        'Нужен ключ Plant.id — добавьте его в настройках.',
+        kind: RecognitionErrorKind.key,
       );
     }
+    images = await _normalize(images);
     final json = await _plantIdPost(
       'health_assessment',
       {'details': _healthDetails},
@@ -100,9 +125,33 @@ class RecognitionService {
   void _requireKey(RecognitionProviderId id) {
     if (!settings.hasKeyFor(id)) {
       throw RecognitionException(
-        'Не задан API-ключ для ${id.short}. Откройте «Ещё → Настройки».',
+        'Нет ключа ${id.short} — добавьте его в настройках.',
+        kind: RecognitionErrorKind.key,
+        provider: id,
       );
     }
+  }
+
+  /// Любой снимок (HEIC с iPhone, PNG, огромный кадр) → JPEG до 1280 px; пустой кадр — понятная ошибка.
+  Future<List<Uint8List>> _normalize(List<Uint8List> images) async {
+    final out = <Uint8List>[];
+    for (final b in images) {
+      try {
+        out.add(await normalizePhoto(b));
+      } on BlankPhotoException {
+        throw RecognitionException(
+          'Снимок получился пустым — снимите ещё раз.',
+          kind: RecognitionErrorKind.emptyPhoto,
+        );
+      } catch (e) {
+        throw RecognitionException(
+          'Не удалось прочитать фото — выберите другое.',
+          kind: RecognitionErrorKind.emptyPhoto,
+          detail: '$e',
+        );
+      }
+    }
+    return out;
   }
 
   String _dataUri(Uint8List bytes) =>
@@ -191,7 +240,8 @@ class RecognitionService {
       return Map<String, dynamic>.from(res.data as Map);
     } on FunctionException catch (e) {
       throw RecognitionException(
-        'Сервер распознавания вернул ошибку ${e.status}: ${e.details ?? e.reasonPhrase}',
+        'Сервер распознавания не ответил.',
+        detail: 'HTTP ${e.status}: ${e.details ?? e.reasonPhrase}',
       );
     }
   }
@@ -204,52 +254,76 @@ class RecognitionService {
       return await call().timeout(const Duration(seconds: 45));
     } on TimeoutException {
       throw RecognitionException(
-        '${id.short} долго не отвечает. Проверьте интернет и попробуйте ещё раз — или другой сервис.',
+        '${id.short} не ответил вовремя.',
         provider: id,
+        kind: RecognitionErrorKind.timeout,
+        detail: 'нет ответа за 45 с',
       );
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
       // В браузере отказ по CORS выглядит как обрыв связи — для Pl@ntNet это почти всегда неразрешённый домен.
       if (kIsWeb && id == RecognitionProviderId.plantNet) {
-        throw _plantNetDomain();
+        throw _plantNetDomain(e.message);
       }
       throw RecognitionException(
-        'Нет связи с ${id.short}. Проверьте интернет и попробуйте ещё раз.',
+        'Нет связи с ${id.short}.',
         provider: id,
+        kind: RecognitionErrorKind.network,
+        detail: e.message,
       );
     }
   }
 
-  RecognitionException _plantNetDomain() => RecognitionException(
-    'Pl@ntNet не разрешает запросы с этого сайта. На my.plantnet.org → Settings → Authorized domains '
-    'добавьте «${Uri.base.host}» — или распознайте через Plant.id.',
+  RecognitionException _plantNetDomain([
+    String? detail,
+  ]) => RecognitionException(
+    'Pl@ntNet не пускает этот сайт.',
     provider: RecognitionProviderId.plantNet,
+    kind: RecognitionErrorKind.domain,
+    detail:
+        'В my.plantnet.org → Authorized domains нужно «${Uri.base.scheme}://${Uri.base.host}» (вместе с https://)'
+        '${detail == null ? '' : '. $detail'}',
   );
 
   Map<String, dynamic> _decode(http.Response res, String name) {
     final id = name == 'Pl@ntNet'
         ? RecognitionProviderId.plantNet
         : RecognitionProviderId.plantId;
-    if (kIsWeb &&
-        id == RecognitionProviderId.plantNet &&
-        res.statusCode == 403) {
-      throw _plantNetDomain();
-    }
-    if (res.statusCode == 401 || res.statusCode == 403) {
+    final body = utf8.decode(res.bodyBytes, allowMalformed: true);
+    final code = res.statusCode;
+    final detail =
+        'HTTP $code: ${body.length > 200 ? body.substring(0, 200) : body}';
+    final lower = body.toLowerCase();
+    if (code == 429 ||
+        code == 402 ||
+        (code >= 400 &&
+            (lower.contains('credit') ||
+                lower.contains('quota') ||
+                lower.contains('limit')))) {
       throw RecognitionException(
-        '$name отклонил ключ (${res.statusCode}). Проверьте API-ключ в настройках.',
+        'Лимит $name исчерпан.',
         provider: id,
+        kind: RecognitionErrorKind.limit,
+        detail: detail,
       );
     }
-    if (res.statusCode == 429) {
+    if (id == RecognitionProviderId.plantNet &&
+        code == 403 &&
+        (lower.contains('origin') || lower.contains('remote ip') || kIsWeb)) {
+      throw _plantNetDomain(detail);
+    }
+    if (code == 401 || code == 403) {
       throw RecognitionException(
-        '$name: исчерпан лимит запросов. Попробуйте позже или переключите сервис.',
+        '$name не принял ключ.',
         provider: id,
+        kind: RecognitionErrorKind.key,
+        detail: detail,
       );
     }
-    if (res.statusCode >= 400) {
+    if (code >= 400) {
       throw RecognitionException(
-        '$name вернул ошибку ${res.statusCode}: ${utf8.decode(res.bodyBytes)}',
+        '$name вернул ошибку $code.',
         provider: id,
+        detail: detail,
       );
     }
     return Map<String, dynamic>.from(

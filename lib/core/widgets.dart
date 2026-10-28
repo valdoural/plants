@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/models.dart';
 import 'theme.dart';
+import 'toast.dart';
 
 /// Картинка по https:// или data:-ссылке, с заглушкой.
 class PlantImage extends StatelessWidget {
@@ -229,10 +230,23 @@ Future<void> openLink(String url) =>
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 void showError(BuildContext context, Object error) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(error.toString()),
-      behavior: SnackBarBehavior.floating,
+  final text = error.toString();
+  showToast(
+    context,
+    text.length > 90 ? 'Что-то пошло не так.' : text,
+    kind: ToastKind.error,
+    actionLabel: text.length > 90 ? 'Подробнее' : null,
+    onAction: () => showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        content: SelectableText(text),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
     ),
   );
 }

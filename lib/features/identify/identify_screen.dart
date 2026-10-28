@@ -16,6 +16,7 @@ import '../../data/recognition/recognition_service.dart';
 import '../diagnose/diagnose_result_screen.dart';
 import 'identify_result_screen.dart';
 import 'photo_guide.dart';
+import 'recognition_errors.dart';
 
 enum CameraMode { identify, diagnose }
 
@@ -94,32 +95,26 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
           .read(gardenProvider.notifier)
           .addIdentification(result, _photos.first);
       if (!mounted) return;
-      context.pushReplacement(
+      final router = GoRouter.of(context);
+      final used = provider ?? ref.read(settingsProvider).provider;
+      // Экран камеры сейчас закроется — предупреждение показываем через корневой навигатор.
+      warnIfQuotaLow(
+        Navigator.of(context, rootNavigator: true).context,
+        ref,
+        used,
+      );
+      router.pushReplacement(
         '/identify/result',
         extra: IdentifyResultArgs(record: record, photo: _photos.first),
       );
-    } on RecognitionException catch (e) {
-      if (!mounted) return;
-      final settings = ref.read(settingsProvider);
-      final canRetry =
-          !_diagnose &&
-          e.provider == RecognitionProviderId.plantNet &&
-          settings.hasKeyFor(RecognitionProviderId.plantId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          duration: const Duration(seconds: 10),
-          action: canRetry
-              ? SnackBarAction(
-                  label: 'Через Plant.id',
-                  onPressed: () =>
-                      _submit(provider: RecognitionProviderId.plantId),
-                )
-              : null,
-        ),
-      );
     } catch (e) {
-      if (mounted) showError(context, e);
+      if (!mounted) return;
+      presentRecognitionError(
+        context,
+        ref,
+        e,
+        retryWith: _diagnose ? null : (other) => _submit(provider: other),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
