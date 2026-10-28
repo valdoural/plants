@@ -11,8 +11,7 @@ import '../../data/discover/catalog.dart';
 import '../../data/discover/discover_providers.dart';
 import '../../data/discover/inat.dart';
 import '../../data/models.dart';
-import '../../data/garden_controller.dart';
-import '../garden/add_plant_sheet.dart';
+import '../identify/species_screen.dart';
 import 'discover_widgets.dart';
 
 /// Выбор вида по названию: открывает поиск и возвращает полные сведения о выбранном виде.
@@ -289,7 +288,7 @@ class CatalogScreen extends ConsumerWidget {
   }
 }
 
-/// Карточка вида из каталога/поиска: фото, описание, предупреждение о ядовитости, «Добавить в сад».
+/// Карточка вида из каталога или поиска — та же подробная карточка, что после распознавания.
 class TaxonScreen extends ConsumerWidget {
   const TaxonScreen({super.key, required this.id});
 
@@ -297,229 +296,24 @@ class TaxonScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.palette;
-    final detail = ref.watch(taxonDetailProvider(id));
-    return Scaffold(
-      body: detail.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Scaffold(
-          appBar: AppBar(),
-          body: EmptyState(
-            icon: Icons.cloud_off,
-            title: 'Не удалось загрузить',
-            message: '$e',
+    return ref
+        .watch(taxonDetailProvider(id))
+        .when(
+          loading: () => Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: CircularProgressIndicator()),
           ),
-        ),
-        data: (t) {
-          final photos = t.photos.isNotEmpty ? t.photos : [?t.photoUrl];
-          final toxic = t.isIn(CatalogKind.toxicIds);
-          final warnings = [
-            if (toxic)
-              (
-                Icons.warning_amber_rounded,
-                p.alert,
-                'Ядовитое растение. Держите подальше от детей и животных, работайте в перчатках.',
-              ),
-            if (t.isIn(CatalogKind.allergenIds))
-              (
-                Icons.air,
-                p.water,
-                'Сильный аллерген: в сезон пыления может вызывать насморк и слезотечение.',
-              ),
-            if (t.isIn(CatalogKind.invasiveIds))
-              (
-                Icons.do_not_disturb_on_outlined,
-                p.alert,
-                'Инвазивный вид: быстро захватывает территорию и вытесняет местные растения. Не сажайте и не распространяйте семена.',
-              ),
-          ];
-          final wide = !context.windowSize.isCompact;
-          final hero = SizedBox(
-            height: wide
-                ? 520
-                : (MediaQuery.sizeOf(context).height * 0.48).clamp(
-                    300.0,
-                    460.0,
-                  ),
-            child: PageView(
-              children: [
-                for (final u in photos) PlantImage(u, radius: wide ? 28 : 0),
-              ],
+          error: (e, _) => Scaffold(
+            appBar: AppBar(),
+            body: EmptyState(
+              icon: Icons.cloud_off,
+              title: 'Не удалось загрузить',
+              message: '$e',
             ),
-          );
-          final info = Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (photos.length > 1)
-                Text(
-                  '${photos.length} фото — листайте',
-                  style: TextStyle(fontSize: 13, color: p.inkSecondary),
-                ),
-              const SizedBox(height: 8),
-              Text(
-                t.displayName,
-                style: const TextStyle(
-                  fontSize: 30,
-                  height: 1.12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                [t.name, if (t.family != null) t.family].join(' · '),
-                style: TextStyle(
-                  fontSize: 17,
-                  fontStyle: FontStyle.italic,
-                  color: p.inkSecondary,
-                ),
-              ),
-              for (final (icon, color, text) in warnings) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: p.surface,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(icon, color: color),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          text,
-                          style: const TextStyle(fontSize: 15, height: 1.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (t.summary != null && t.summary!.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Text(
-                  t.summary!,
-                  style: const TextStyle(fontSize: 16, height: 1.5),
-                ),
-              ],
-              const SizedBox(height: 22),
-              FilledButton(
-                onPressed: () async {
-                  final plant = await showAddPlantSheet(
-                    context,
-                    ref,
-                    species: t.toCandidate(),
-                  );
-                  if (plant != null && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('«${plant.nickname}» в вашем саду'),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Добавить в сад'),
-              ),
-              const SizedBox(height: 10),
-              _WishButton(taxon: t),
-              const SizedBox(height: 10),
-              OutlinedButton(
-                onPressed: () => openLink(t.wikipediaUrl ?? t.inatUrl),
-                child: const Text('Подробнее в энциклопедии'),
-              ),
-              const SizedBox(height: 18),
-              if (t.photoAttribution != null)
-                Text(
-                  'Фото: ${t.photoAttribution} · iNaturalist',
-                  style: TextStyle(fontSize: 12, color: p.inkSecondary),
-                ),
-            ],
-          );
-
-          if (wide) {
-            return SafeArea(
-              child: MaxWidth(
-                child: ListView(
-                  padding: EdgeInsets.all(context.gutter),
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: BackButton(onPressed: () => context.pop()),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 6, child: hero),
-                        const SizedBox(width: 32),
-                        Expanded(flex: 5, child: info),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: 0,
-                backgroundColor: p.bg,
-                title: Text(
-                  t.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SliverToBoxAdapter(child: hero),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-                sliver: SliverToBoxAdapter(child: info),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// «Хочу вырастить»: добавляет вид в список желаний или убирает из него.
-class _WishButton extends ConsumerWidget {
-  const _WishButton({required this.taxon});
-
-  final InatTaxon taxon;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final wished = ref.watch(gardenProvider).value?.isWished(taxon.id) ?? false;
-    return OutlinedButton.icon(
-      onPressed: () async {
-        final added = await ref
-            .read(gardenProvider.notifier)
-            .toggleWish(
-              taxonId: taxon.id,
-              scientificName: taxon.name,
-              commonName: taxon.commonName,
-              photoUrl: taxon.photoUrl,
-            );
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                added
-                    ? 'В списке желаний — он в разделе «Мой сад»'
-                    : 'Убрано из списка желаний',
-              ),
-            ),
-          );
-        }
-      },
-      icon: Icon(wished ? Icons.bookmark : Icons.bookmark_border),
-      label: Text(wished ? 'В списке желаний' : 'Хочу вырастить'),
-    );
+          ),
+          data: (t) => SpeciesScreen(
+            args: SpeciesArgs(candidate: t.toCandidate(), taxonId: t.id),
+          ),
+        );
   }
 }

@@ -19,6 +19,7 @@ class InatTaxon {
     this.family,
     this.photos = const [],
     this.ancestorIds = const [],
+    this.ancestry = const {},
   });
 
   final int id;
@@ -39,6 +40,9 @@ class InatTaxon {
 
   /// id всех предков (род, семейство…) — чтобы вид из ядовитого рода тоже считался ядовитым.
   final List<int> ancestorIds;
+
+  /// Ранг → латинское имя предка: class, order, family, genus…
+  final Map<String, String> ancestry;
 
   bool isIn(Set<int> ids) => ids.contains(id) || ancestorIds.any(ids.contains);
 
@@ -91,6 +95,11 @@ class InatTaxon {
       ancestorIds: ((j['ancestor_ids'] as List?) ?? const [])
           .map((e) => (e as num).toInt())
           .toList(),
+      ancestry: {
+        for (final a in ancestors.cast<Map>())
+          if (a['rank'] is String && a['name'] is String)
+            a['rank'] as String: a['name'] as String,
+      },
     );
   }
 
@@ -195,6 +204,62 @@ class InatClient {
         t.id: t,
     };
     return [for (final id in ids) ?byId[id]];
+  }
+
+  /// Вид по точному латинскому названию (из ответа Plant.id или Pl@ntNet) — с подробностями.
+  Future<InatTaxon?> byName(String latin) async {
+    final name = latin.trim().split(RegExp(r'\s+')).take(3).join(' ');
+    final d = await _get('taxa', {
+      'q': name,
+      'per_page': '10',
+      'taxon_id': '$plantae',
+    });
+    final results = ((d['results'] as List?) ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+    final exact = results
+        .where(
+          (t) => (t['name'] as String?)?.toLowerCase() == name.toLowerCase(),
+        )
+        .firstOrNull;
+    final hit = exact ?? results.firstOrNull;
+    if (hit == null) return null;
+    return detail((hit['id'] as num).toInt());
+  }
+
+  /// Наблюдения с цветками по месяцам (1…12) — когда вид цветёт; рядом, если место известно.
+  Future<Map<int, int>> floweringByMonth(
+    int taxonId, {
+    double? lat,
+    double? lng,
+  }) async {
+    Future<Map<int, int>> load(bool local) async {
+      final d = await _get('observations/histogram', {
+        'taxon_id': '$taxonId',
+        'date_field': 'observed',
+        'interval': 'month_of_year',
+        'term_id': '12',
+        'term_value_id': '13',
+        if (local && lat != null && lng != null) ...{
+          'lat': '$lat',
+          'lng': '$lng',
+          'radius': '800',
+        },
+      });
+      final m = Map<String, dynamic>.from(
+        ((d['results'] as Map?)?['month_of_year'] as Map?) ?? const {},
+      );
+      return {
+        for (final e in m.entries) int.parse(e.key): (e.value as num).toInt(),
+      };
+    }
+
+    final local = await load(true);
+    // Рядом слишком мало наблюдений — берём весь мир.
+    if (lat != null && local.values.fold<int>(0, (a, b) => a + b) >= 20) {
+      return local;
+    }
+    return load(false);
   }
 
   /// Подробности: описание из Википедии, все фото, семейство.

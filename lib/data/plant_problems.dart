@@ -115,6 +115,7 @@ class PlantProblem {
     required this.factors,
     required this.fix,
     this.prevent = const [],
+    this.inatTaxonId,
   });
 
   final String id;
@@ -125,11 +126,15 @@ class PlantProblem {
   final Set<CareFactor> factors;
   final List<String> fix;
   final List<String> prevent;
+
+  /// Возбудитель или вредитель в iNaturalist — оттуда берём фото для карточки.
+  final int? inatTaxonId;
 }
 
 const plantProblems = <PlantProblem>[
   PlantProblem(
     id: 'root-rot',
+    inatTaxonId: 360255,
     part: PlantPart.roots,
     title: 'Перелив и корневая гниль',
     summary: 'Самая частая причина гибели комнатных растений: в мокрой почве корни задыхаются и гниют, растение вянет, хотя земля влажная.',
@@ -258,6 +263,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'spider-mite',
+    inatTaxonId: 203333,
     part: PlantPart.pests,
     title: 'Паутинный клещ',
     summary: 'Крошечные клещи на изнанке листьев высасывают сок: лист покрывается светлыми точками, желтеет, появляется паутинка. Любит сухой тёплый воздух.',
@@ -272,6 +278,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'aphids',
+    inatTaxonId: 52381,
     part: PlantPart.pests,
     title: 'Тля',
     summary: 'Колонии мелких зелёных или чёрных насекомых на молодых побегах и бутонах; листья скручиваются и становятся липкими.',
@@ -285,6 +292,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'mealybug',
+    inatTaxonId: 49574,
     part: PlantPart.pests,
     title: 'Мучнистый червец',
     summary: 'Белые ватные комочки в пазухах листьев и на корнях, липкий налёт; растение слабеет и желтеет.',
@@ -298,6 +306,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'scale',
+    inatTaxonId: 49456,
     part: PlantPart.pests,
     title: 'Щитовка',
     summary: 'Неподвижные бурые бляшки на стеблях и вдоль жилок, под ними — насекомые; листья липкие.',
@@ -311,6 +320,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'thrips',
+    inatTaxonId: 83201,
     part: PlantPart.pests,
     title: 'Трипсы',
     summary: 'На листьях серебристые штрихи и чёрные точки-выделения, цветы деформируются.',
@@ -324,6 +334,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'fungus-gnats',
+    inatTaxonId: 85259,
     part: PlantPart.roots,
     title: 'Грибные комарики (сциариды)',
     summary: 'Мелкие чёрные мошки над почвой; личинки живут в постоянно влажной земле и повреждают молодые корни.',
@@ -337,6 +348,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'powdery-mildew',
+    inatTaxonId: 55525,
     part: PlantPart.leaves,
     title: 'Мучнистая роса',
     summary: 'Белый мучнистый налёт на листьях и стеблях — грибковая болезнь, развивается при перепадах температуры и плохой вентиляции.',
@@ -350,6 +362,7 @@ const plantProblems = <PlantProblem>[
   ),
   PlantProblem(
     id: 'leaf-spot',
+    inatTaxonId: 354898,
     part: PlantPart.leaves,
     title: 'Пятнистость листьев',
     summary: 'Бурые пятна с жёлтым ободком — грибковая или бактериальная инфекция, чаще при мокрых листьях и переливе.',
@@ -492,3 +505,35 @@ Set<CareFactor> careFactors({
   ...changes,
   if (pestsSeen) CareFactor.pests,
 };
+
+/// Проблемы, которые чаще всего встречаются у вида с такими потребностями.
+/// [wateringLevel] 1…3 (засухоустойчивое…влаголюбивое), [likesSun] — любит прямое солнце,
+/// [tropical] — родом из тропиков (боится сухого воздуха и холода).
+List<PlantProblem> likelyProblems({
+  double? wateringLevel,
+  bool? likesSun,
+  bool tropical = false,
+  int limit = 8,
+}) {
+  final ids = <String>[
+    if (wateringLevel != null && wateringLevel <= 1.6) 'root-rot',
+    if (wateringLevel != null && wateringLevel >= 2.4) 'underwatering',
+    if (tropical) ...['dry-air', 'spider-mite', 'cold'],
+    if (likesSun == true) 'low-light',
+    if (likesSun == false) 'sunburn',
+    'root-rot',
+    'mealybug',
+    'fungus-gnats',
+    'aphids',
+    'leaf-spot',
+    'scale',
+    'powdery-mildew',
+    'hunger',
+    'thrips',
+  ];
+  final seen = <String>{};
+  return [
+    for (final id in ids)
+      if (seen.add(id)) ?problemById(id),
+  ].take(limit).toList();
+}

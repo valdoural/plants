@@ -46,7 +46,11 @@ void main() {
     expect(r.width, closeTo(607.5, 0.01));
     expect(r.center, const Offset(960, 540));
     // Зум ×2 — вдвое меньше по каждой стороне, центр тот же.
-    final z = visibleRect(const Size(1920, 1080), const Size(360, 640), zoom: 2);
+    final z = visibleRect(
+      const Size(1920, 1080),
+      const Size(360, 640),
+      zoom: 2,
+    );
     expect(z.width, closeTo(303.75, 0.01));
     expect(z.center, const Offset(960, 540));
   });

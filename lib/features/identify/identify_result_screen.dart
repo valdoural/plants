@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/photo_viewer.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/care_text_ru.dart';
@@ -218,7 +219,20 @@ class IdentifyResultScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                  const SizedBox(height: 12),
+                  if (top.imageUrls.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Похожие фото',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: p.inkSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    PhotoStrip(urls: top.imageUrls, height: 96),
+                  ],
+                  const SizedBox(height: 16),
                   FilledButton(
                     onPressed: () => add(top),
                     child: const Text('Добавить в сад'),
@@ -249,49 +263,61 @@ class IdentifyResultScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     for (final c in record.candidates.skip(1))
-                      PressScale(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => open(c),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                PlantImage(
-                                  c.imageUrls.firstOrNull,
-                                  size: 56,
-                                  radius: 14,
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            PressScale(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => open(c),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        c.displayName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
+                                      PlantImage(
+                                        c.imageUrls.firstOrNull,
+                                        size: 56,
+                                        radius: 14,
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              c.displayName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            Text(
+                                              c.scientificName,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontStyle: FontStyle.italic,
+                                                color: p.inkSecondary,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      Text(
-                                        c.scientificName,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontStyle: FontStyle.italic,
-                                          color: p.inkSecondary,
-                                        ),
-                                      ),
+                                      ConfidenceBadge(c.probability),
                                     ],
                                   ),
                                 ),
-                                ConfidenceBadge(c.probability),
-                              ],
+                              ),
                             ),
-                          ),
+                            if (c.imageUrls.length > 1)
+                              PhotoStrip(urls: c.imageUrls, height: 64),
+                          ],
                         ),
                       ),
                   ],

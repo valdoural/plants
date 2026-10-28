@@ -1,126 +1,152 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/photo_viewer.dart';
+import '../../core/responsive.dart';
+import '../../core/theme.dart';
+import '../../core/toast.dart';
 import '../../core/widgets.dart';
 import '../../data/care_text_ru.dart';
+import '../../data/discover/species_profile.dart';
+import '../../data/garden_controller.dart';
 import '../../data/models.dart';
 import '../garden/add_plant_sheet.dart';
+import 'species_sections.dart';
 
 class SpeciesArgs {
-  const SpeciesArgs({required this.candidate, this.photo, this.photoUrl});
+  const SpeciesArgs({
+    required this.candidate,
+    this.photo,
+    this.photoUrl,
+    this.taxonId,
+  });
 
   final PlantCandidate candidate;
 
   /// Фото пользователя — станет обложкой растения в саду.
   final Uint8List? photo;
   final String? photoUrl;
+
+  /// Вид уже найден в iNaturalist (из каталога или поиска).
+  final int? taxonId;
 }
 
-/// Карточка вида: фото, описание, уход, ссылки.
-class SpeciesScreen extends ConsumerWidget {
+/// Карточка вида по уровням: название → фото → основное → характеристика → инструкция →
+/// условия ухода → гиды → вопросы → проблемы → применение, адаптации, история, название.
+class SpeciesScreen extends ConsumerStatefulWidget {
   const SpeciesScreen({super.key, required this.args});
 
   final SpeciesArgs args;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = args.candidate;
-    final t = Theme.of(context);
+  ConsumerState<SpeciesScreen> createState() => _SpeciesScreenState();
+}
+
+class _SpeciesScreenState extends ConsumerState<SpeciesScreen> {
+  late PlantCandidate _c = widget.args.candidate;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final c = _c;
+    final profileAsync = ref.watch(
+      speciesProfileProvider((c.scientificName, widget.args.taxonId)),
+    );
+    final profile = profileAsync.value;
+    final facts = SpeciesFacts(c, profile);
+    final taxon = profile?.taxon;
+    final names = {
+      ...c.commonNames.skip(1),
+      if (taxon?.commonName != null &&
+          taxon!.commonName!.toLowerCase() != c.displayName.toLowerCase())
+        taxon.commonName!,
+    }.take(4).toList();
+    final photos = <String>{...c.imageUrls, ...?taxon?.photos}.toList();
+    final lead = profile?.wiki?.lead ?? c.description;
+    final wide = !context.windowSize.isCompact;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: PlantImage(
-                c.imageUrls.firstOrNull ?? args.photoUrl,
-                radius: 0,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    c.displayName,
-                    style: t.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    c.scientificName,
-                    style: t.textTheme.titleMedium?.copyWith(
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  if (c.commonNames.length > 1) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Также: ${c.commonNames.skip(1).take(4).join(', ')}',
-                      style: t.textTheme.bodySmall?.copyWith(
-                        color: t.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  SpeciesCareFacts(candidate: c),
-                  if (c.description != null) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      'Описание',
-                      style: t.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(c.description!, style: t.textTheme.bodyLarge),
-                  ],
-                  if (c.imageUrls.length > 1) ...[
-                    const SizedBox(height: 20),
-                    Text(
-                      'Похожие фото',
-                      style: t.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 110,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: c.imageUrls.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) => SizedBox(
-                          width: 110,
-                          child: PlantImage(c.imageUrls[i], radius: 12),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  _Taxonomy(candidate: c),
-                  if (c.infoUrl != null) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => openLink(c.infoUrl!),
-                      icon: const Icon(Icons.open_in_new),
-                      label: const Text('Больше о виде'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+      appBar: AppBar(
+        title: Text(
+          c.displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          if (taxon != null)
+            _WishIcon(taxonId: taxon.id, c: c, photo: photos.firstOrNull),
         ],
+      ),
+      body: MaxWidth(
+        maxWidth: 860,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(context.gutter, 4, context.gutter, 40),
+          children: [
+            // 1. Название и латынь
+            Text(
+              c.displayName,
+              style: const TextStyle(
+                fontSize: 30,
+                height: 1.12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              c.scientificName,
+              style: TextStyle(
+                fontSize: 17,
+                fontStyle: FontStyle.italic,
+                color: p.inkSecondary,
+              ),
+            ),
+            if (names.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Также: ${names.join(', ')}',
+                style: TextStyle(fontSize: 14, color: p.inkSecondary),
+              ),
+            ],
+            const SizedBox(height: 16),
+            // 2. Изображения
+            _Gallery(
+              photos: photos,
+              userPhoto: widget.args.photo,
+              height: wide ? 420 : 300,
+            ),
+            if (profileAsync.isLoading)
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            if (lead != null && lead.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              WikiLead(text: lead),
+            ],
+            // 3. Основное · 4. Характеристика
+            MainInfoSection(facts: facts),
+            CharacteristicsSection(facts: facts),
+            // 5. Инструкция · 6. Условия ухода
+            CareGuideSection(facts: facts),
+            CareConditionsSection(
+              facts: facts,
+              onWrongSpecies: (n) => setState(() => _c = n),
+            ),
+            // 7. Гиды · 8. Вопросы · 9. Проблемы
+            const GuidesSection(),
+            FaqSection(facts: facts),
+            CommonProblemsSection(facts: facts),
+            // 10. Применение, адаптации, история и легенды, история названия
+            ...wikiSections(profile?.wiki),
+            const SizedBox(height: 24),
+            _Sources(profile: profile, infoUrl: c.infoUrl),
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -133,12 +159,10 @@ class SpeciesScreen extends ConsumerWidget {
                 context,
                 ref,
                 species: c,
-                photo: args.photo,
+                photo: widget.args.photo,
               );
               if (plant != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('«${plant.nickname}» в вашем саду')),
-                );
+                showToast(context, '«${plant.nickname}» в вашем саду');
                 context.go('/garden');
                 context.push('/plant/${plant.id}');
               }
@@ -146,6 +170,238 @@ class SpeciesScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Большая карусель фото с точками; касание — полноэкранный просмотр; ниже — лента миниатюр.
+class _Gallery extends StatefulWidget {
+  const _Gallery({required this.photos, required this.height, this.userPhoto});
+
+  final List<String> photos;
+  final Uint8List? userPhoto;
+  final double height;
+
+  @override
+  State<_Gallery> createState() => _GalleryState();
+}
+
+class _GalleryState extends State<_Gallery> {
+  final _pages = PageController();
+  var _index = 0;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = widget.photos;
+    if (photos.isEmpty) {
+      return SizedBox(
+        height: widget.height,
+        child: widget.userPhoto != null
+            ? PlantImage.memory(widget.userPhoto!, radius: 24)
+            : const PlantImage(null, radius: 24),
+      );
+    }
+    final many = photos.length > 1;
+    final arrows = kIsWeb || !context.windowSize.isCompact;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: widget.height,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _pages,
+                itemCount: photos.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () => showPhotoViewer(context, photos, initial: i),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: PlantImage(photos[i], radius: 24),
+                  ),
+                ),
+              ),
+              if (many)
+                Positioned(
+                  bottom: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_index + 1} / ${photos.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (many && arrows)
+                for (final left in [true, false])
+                  Positioned(
+                    left: left ? 8 : null,
+                    right: left ? null : 8,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: IconButton.filled(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black45,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => _pages.animateToPage(
+                          (_index + (left ? -1 : 1)).clamp(
+                            0,
+                            photos.length - 1,
+                          ),
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                        ),
+                        icon: Icon(
+                          left ? Icons.chevron_left : Icons.chevron_right,
+                        ),
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+        if (many) ...[
+          const SizedBox(height: 10),
+          PhotoStrip(urls: photos, height: 72),
+        ],
+      ],
+    );
+  }
+}
+
+/// Вводная из Википедии с «Читать дальше».
+class WikiLead extends StatefulWidget {
+  const WikiLead({super.key, required this.text});
+
+  final String text;
+
+  @override
+  State<WikiLead> createState() => _WikiLeadState();
+}
+
+class _WikiLeadState extends State<WikiLead> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final long = widget.text.length > 300;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          alignment: Alignment.topCenter,
+          child: Text(
+            widget.text,
+            maxLines: _open || !long ? null : 5,
+            overflow: _open || !long ? null : TextOverflow.fade,
+            style: const TextStyle(fontSize: 16, height: 1.5),
+          ),
+        ),
+        if (long)
+          TextButton(
+            onPressed: () => setState(() => _open = !_open),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: Text(_open ? 'Свернуть' : 'Читать дальше'),
+          ),
+      ],
+    );
+  }
+}
+
+class _WishIcon extends ConsumerWidget {
+  const _WishIcon({required this.taxonId, required this.c, this.photo});
+
+  final int taxonId;
+  final PlantCandidate c;
+  final String? photo;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wished = ref.watch(gardenProvider).value?.isWished(taxonId) ?? false;
+    return IconButton(
+      tooltip: wished ? 'В списке желаний' : 'Хочу вырастить',
+      icon: Icon(wished ? Icons.bookmark : Icons.bookmark_border),
+      onPressed: () async {
+        final added = await ref
+            .read(gardenProvider.notifier)
+            .toggleWish(
+              taxonId: taxonId,
+              scientificName: c.scientificName,
+              commonName: c.commonNames.firstOrNull,
+              photoUrl: photo,
+            );
+        if (context.mounted) {
+          showToast(
+            context,
+            added ? 'В списке желаний' : 'Убрано из списка желаний',
+          );
+        }
+      },
+    );
+  }
+}
+
+/// Откуда сведения — с лицензиями.
+class _Sources extends StatelessWidget {
+  const _Sources({required this.profile, this.infoUrl});
+
+  final SpeciesProfile? profile;
+  final String? infoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final wiki = profile?.wiki;
+    final taxon = profile?.taxon;
+    final links = <(String, String)>[
+      if (wiki != null) ('Википедия', wiki.url),
+      if (taxon != null) ('iNaturalist', taxon.inatUrl),
+      if (profile?.gbifKey != null)
+        ('GBIF', 'https://www.gbif.org/species/${profile!.gbifKey}'),
+      if (infoUrl != null && wiki == null) ('Подробнее', infoUrl!),
+    ];
+    if (links.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Источники: тексты — Википедия (CC BY-SA), фото и цветение — iNaturalist (лицензии авторов), '
+          'карта и климат — наблюдения GBIF.org, уход — Plant.id.',
+          style: TextStyle(fontSize: 12, height: 1.4, color: p.inkSecondary),
+        ),
+        Wrap(
+          spacing: 4,
+          children: [
+            for (final (label, url) in links)
+              TextButton(onPressed: () => openLink(url), child: Text(label)),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -244,52 +500,5 @@ class SpeciesCareFacts extends StatelessWidget {
   ) {
     if (isRussian(raw)) return (icon, title, raw, null);
     return (icon, title, summary ?? 'Описание на английском', raw);
-  }
-}
-
-class _Taxonomy extends StatelessWidget {
-  const _Taxonomy({required this.candidate});
-
-  final PlantCandidate candidate;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = [
-      if (candidate.family != null) ('Семейство', candidate.family!),
-      if (candidate.genus != null) ('Род', candidate.genus!),
-      ('Вид', candidate.scientificName),
-    ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (final (k, v) in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 110,
-                      child: Text(
-                        k,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        v,
-                        style: const TextStyle(fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }
