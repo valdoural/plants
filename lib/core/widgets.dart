@@ -1,12 +1,35 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/models.dart';
 import 'theme.dart';
 import 'toast.dart';
+
+/// Ширины, под которые запрашиваем и декодируем картинки: немного вариантов — лучше работает кэш.
+int _bucket(double px) {
+  for (final w in const [160, 320, 480, 720, 1080, 1600]) {
+    if (px <= w) return w;
+  }
+  return 1600;
+}
+
+String _resized(String url, int width) =>
+    'https://wsrv.nl/?url=${Uri.encodeComponent(url)}&w=$width&we&output=jpg&q=82';
+
+/// data:-фото из хранилища декодируются один раз: те же байты — та же картинка в кэше, без мерцания.
+final _dataCache = <String, Uint8List>{};
+Uint8List _dataBytes(String uri) {
+  final key = '${uri.length}:${uri.hashCode}';
+  final hit = _dataCache.remove(key);
+  if (hit != null) return _dataCache[key] = hit;
+  final bytes = base64Decode(uri.substring(uri.indexOf(',') + 1));
+  if (_dataCache.length >= 40) _dataCache.remove(_dataCache.keys.first);
+  return _dataCache[key] = bytes;
+}
 
 /// Картинка по https:// или data:-ссылке, с заглушкой.
 class PlantImage extends StatelessWidget {
@@ -46,34 +69,58 @@ class PlantImage extends StatelessWidget {
       ),
     );
     final u = url;
-    Widget child;
-    if (bytes != null) {
-      child = Image.memory(
-        bytes!,
-        width: size,
-        height: size,
-        fit: fit,
-        gaplessPlayback: true,
-      );
-    } else if (u == null || u.isEmpty) {
+    final Widget child;
+    if (bytes == null && (u == null || u.isEmpty)) {
       child = placeholder;
-    } else if (u.startsWith('data:')) {
-      child = Image.memory(
-        base64Decode(u.substring(u.indexOf(',') + 1)),
-        width: size,
-        height: size,
-        fit: fit,
-        gaplessPlayback: true,
-      );
     } else {
-      // В браузере картинки чужих CDN грузим через <img>: так не мешает CORS.
-      child = Image.network(
-        u,
-        width: size,
-        height: size,
-        fit: fit,
-        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-        errorBuilder: (_, _, _) => placeholder,
+      child = LayoutBuilder(
+        builder: (context, c) {
+          // Декодируем под размер на экране, а не в полном разрешении — меньше памяти, плавнее прокрутка.
+          final dpr = MediaQuery.devicePixelRatioOf(context);
+          final logical =
+              size ??
+              (c.hasBoundedWidth
+                  ? c.maxWidth
+                  : (c.hasBoundedHeight ? c.maxHeight : 600));
+          final px = _bucket(logical * dpr);
+          if (bytes != null || u!.startsWith('data:')) {
+            return Image.memory(
+              bytes ?? _dataBytes(u!),
+              width: size,
+              height: size,
+              fit: fit,
+              cacheWidth: px,
+              gaplessPlayback: true,
+              errorBuilder: (_, _, _) => placeholder,
+            );
+          }
+          Widget original() => Image.network(
+            u,
+            width: size,
+            height: size,
+            fit: fit,
+            cacheWidth: px,
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+            errorBuilder: (_, _, _) => placeholder,
+          );
+          if (!kIsWeb) return original();
+          // В браузере берём уменьшенную копию с CORS через wsrv.nl: иначе снимки с сайтов без CORS
+          // показываются HTML-вставками, и на iPhone прокрутка дёргается. Не загрузилось — оригинал.
+          return Image.network(
+            _resized(u, px),
+            width: size,
+            height: size,
+            fit: fit,
+            gaplessPlayback: true,
+            frameBuilder: (_, image, frame, sync) => frame == null && !sync
+                ? ColoredBox(
+                    color: p.surfaceHigh,
+                    child: SizedBox(width: size, height: size),
+                  )
+                : image,
+            errorBuilder: (_, _, _) => original(),
+          );
+        },
       );
     }
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
