@@ -4,61 +4,37 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// Знак Leafy «Живой лист»: изогнутый лист с прожилками в уголках видоискателя.
+/// Знак Leafy: лист в уголках видоискателя (идея 1 с холста логотипов).
 /// Геометрия — в координатах 100×100, как в SVG логотипа (assets/icon, холст дизайна).
 abstract final class LeafyGeometry {
   static Path leaf() => Path()
-    ..moveTo(33, 69)
-    ..cubicTo(27, 55, 32, 40, 45, 32)
-    ..cubicTo(54, 26.5, 64, 25, 74, 24.5)
-    ..cubicTo(73.5, 35, 69.5, 47, 61, 56)
-    ..cubicTo(52.5, 65, 43, 69.5, 33, 69)
+    ..moveTo(30, 70)
+    ..cubicTo(30, 46, 46, 30, 70, 30)
+    ..cubicTo(70, 54, 54, 70, 30, 70)
     ..close();
 
   static Path midrib() => Path()
-    ..moveTo(34, 68)
-    ..cubicTo(42, 58, 54, 43, 71, 27.5);
+    ..moveTo(33, 67)
+    ..lineTo(64, 36);
 
-  static Path veins() => Path()
-    ..moveTo(41, 59)
-    ..cubicTo(38, 56, 36.5, 52, 36.5, 48)
-    ..moveTo(47, 52)
-    ..cubicTo(44, 48.5, 42.5, 44.5, 43, 40.5)
-    ..moveTo(53, 45.5)
-    ..cubicTo(51, 42, 50.5, 38, 51.5, 34.5)
-    ..moveTo(45, 56)
-    ..cubicTo(49, 57.5, 53, 57.5, 57, 56)
-    ..moveTo(51, 49)
-    ..cubicTo(55, 50, 59, 49.5, 62.5, 47.5)
-    ..moveTo(57.5, 41.5)
-    ..cubicTo(61, 42, 64.5, 41, 67, 39);
-
-  static Path petiole() => Path()
-    ..moveTo(33.5, 68.5)
-    ..cubicTo(30.5, 72.5, 27.5, 75, 23.5, 76.5);
-
-  /// Четыре уголка рамки, каждый — от края к углу и дальше по другой стороне.
+  /// Четыре прямых уголка рамки, каждый — от края к углу и дальше по другой стороне.
   static List<Path> corners() => [
     Path()
-      ..moveTo(12, 30)
-      ..lineTo(12, 19)
-      ..quadraticBezierTo(12, 12, 19, 12)
-      ..lineTo(30, 12),
+      ..moveTo(12, 28)
+      ..lineTo(12, 12)
+      ..lineTo(28, 12),
     Path()
-      ..moveTo(70, 12)
-      ..lineTo(81, 12)
-      ..quadraticBezierTo(88, 12, 88, 19)
-      ..lineTo(88, 30),
+      ..moveTo(72, 12)
+      ..lineTo(88, 12)
+      ..lineTo(88, 28),
     Path()
-      ..moveTo(88, 70)
-      ..lineTo(88, 81)
-      ..quadraticBezierTo(88, 88, 81, 88)
-      ..lineTo(70, 88),
+      ..moveTo(88, 72)
+      ..lineTo(88, 88)
+      ..lineTo(72, 88),
     Path()
-      ..moveTo(30, 88)
-      ..lineTo(19, 88)
-      ..quadraticBezierTo(12, 88, 12, 81)
-      ..lineTo(12, 70),
+      ..moveTo(28, 88)
+      ..lineTo(12, 88)
+      ..lineTo(12, 72),
   ];
 }
 
@@ -74,7 +50,7 @@ class LeafyMarkPainter extends CustomPainter {
 
   final Color color;
 
-  /// Цвет прожилок — цвет фона под знаком.
+  /// Цвет жилки — цвет фона под знаком.
   final Color cutout;
   final double frame;
   final double leaf;
@@ -91,8 +67,9 @@ class LeafyMarkPainter extends CustomPainter {
       final stroke = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.2
-        ..strokeCap = StrokeCap.round;
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
       for (final c in LeafyGeometry.corners()) {
         for (final m in c.computeMetrics()) {
           // Уголок вырастает из своей вершины в обе стороны.
@@ -105,26 +82,20 @@ class LeafyMarkPainter extends CustomPainter {
 
     if (leaf > 0) {
       canvas.save();
-      // Лист растёт от черешка.
-      canvas.translate(33, 69);
+      // Лист растёт от основания.
+      canvas.translate(30, 70);
       canvas.scale(leaf);
-      canvas.translate(-33, -69);
+      canvas.translate(-30, -70);
       canvas.drawPath(LeafyGeometry.leaf(), Paint()..color = color);
-      canvas.drawPath(
-        LeafyGeometry.petiole(),
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
-          ..strokeCap = StrokeCap.round,
-      );
       if (veins) {
-        final vein = Paint()
-          ..color = cutout
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round;
-        canvas.drawPath(LeafyGeometry.midrib(), vein..strokeWidth = 1.7);
-        canvas.drawPath(LeafyGeometry.veins(), vein..strokeWidth = 1.05);
+        canvas.drawPath(
+          LeafyGeometry.midrib(),
+          Paint()
+            ..color = cutout
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.6
+            ..strokeCap = StrokeCap.round,
+        );
       }
       canvas.restore();
     }
@@ -156,7 +127,7 @@ class LeafyMark extends StatelessWidget {
       painter: LeafyMarkPainter(
         color: color ?? p.accent,
         cutout: background ?? p.bg,
-        veins: size >= 28,
+        veins: size >= 20,
       ),
     );
   }
