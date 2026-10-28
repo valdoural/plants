@@ -15,12 +15,16 @@ class BlankPhotoException implements Exception {
 Future<Uint8List> normalizePhoto(Uint8List bytes, {int maxSide = 1280}) async {
   if (bytes.isEmpty) throw BlankPhotoException();
   final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-  final descriptor = await ui.ImageDescriptor.encoded(buffer);
-  final w = descriptor.width, h = descriptor.height;
-  final k = math.min(1.0, maxSide / math.max(w, h));
-  final codec = await descriptor.instantiateCodec(
-    targetWidth: math.max(1, (w * k).round()),
-    targetHeight: math.max(1, (h * k).round()),
+  // Размер подбирается по исходным размерам кадра; работает и в браузере, и на телефоне.
+  final codec = await ui.instantiateImageCodecWithSize(
+    buffer,
+    getTargetSize: (w, h) {
+      final k = math.min(1.0, maxSide / math.max(w, h));
+      return ui.TargetImageSize(
+        width: math.max(1, (w * k).round()),
+        height: math.max(1, (h * k).round()),
+      );
+    },
   );
   final frame = await codec.getNextFrame();
   final image = frame.image;
@@ -28,8 +32,6 @@ Future<Uint8List> normalizePhoto(Uint8List bytes, {int maxSide = 1280}) async {
   final width = image.width, height = image.height;
   image.dispose();
   codec.dispose();
-  descriptor.dispose();
-  buffer.dispose();
   if (data == null || width < 16 || height < 16) throw BlankPhotoException();
   final rgba = data.buffer.asUint8List();
   if (_isBlank(rgba)) throw BlankPhotoException();

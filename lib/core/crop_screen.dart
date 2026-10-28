@@ -44,6 +44,61 @@ Uint8List cropJpeg(
   return img.encodeJpg(out, quality: 85);
 }
 
+/// Обрезает снимок камеры ровно по видимой части видоискателя размером [viewport]
+/// (превью заполняет его с обрезкой краёв) и дополнительно по цифровому зуму [zoom] от центра.
+Uint8List cropToViewport(
+  Uint8List bytes, {
+  required Size viewport,
+  double zoom = 1,
+  int maxSide = 1600,
+}) {
+  var image = img.bakeOrientation(img.decodeImage(bytes)!);
+  final rect = visibleRect(
+    Size(image.width.toDouble(), image.height.toDouble()),
+    viewport,
+    zoom: zoom,
+  );
+  image = img.copyCrop(
+    image,
+    x: rect.left.round(),
+    y: rect.top.round(),
+    width: rect.width.round(),
+    height: rect.height.round(),
+  );
+  if (image.width > maxSide || image.height > maxSide) {
+    image = img.copyResize(
+      image,
+      width: image.width >= image.height ? maxSide : null,
+      height: image.height > image.width ? maxSide : null,
+      interpolation: img.Interpolation.average,
+    );
+  }
+  return img.encodeJpg(image, quality: 88);
+}
+
+/// Какая часть снимка [photo] видна в окне [viewport] при заполнении с обрезкой и зуме [zoom].
+Rect visibleRect(Size photo, Size viewport, {double zoom = 1}) {
+  final scale = [
+    viewport.width / photo.width,
+    viewport.height / photo.height,
+  ].reduce((a, b) => a > b ? a : b);
+  final w = (viewport.width / scale / zoom).clamp(1.0, photo.width);
+  final h = (viewport.height / scale / zoom).clamp(1.0, photo.height);
+  return Rect.fromCenter(
+    center: Offset(photo.width / 2, photo.height / 2),
+    width: w,
+    height: h,
+  );
+}
+
+/// Увеличение готового фото от центра: оставляет 1/[zoom] по каждой стороне.
+Uint8List zoomCenter(Uint8List bytes, double zoom) {
+  if (zoom <= 1.01) return bytes;
+  final image = img.bakeOrientation(img.decodeImage(bytes)!);
+  final size = Size(image.width.toDouble(), image.height.toDouble());
+  return cropJpeg(bytes, rect: visibleRect(size, size, zoom: zoom));
+}
+
 class _CropScreen extends StatefulWidget {
   const _CropScreen({required this.bytes});
 

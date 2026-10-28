@@ -17,6 +17,7 @@ import '../diagnose/diagnose_result_screen.dart';
 import 'identify_result_screen.dart';
 import 'photo_guide.dart';
 import 'recognition_errors.dart';
+import '../../core/toast.dart';
 
 enum CameraMode { identify, diagnose }
 
@@ -34,7 +35,23 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   static const _maxPhotos = 3;
   final _camera = GlobalKey<LiveCameraState>();
   final _photos = <Uint8List>[];
-  var _organ = PlantOrgan.auto;
+
+  /// Увеличение каждого снимка (ползунок справа): на распознавание уйдёт центральная часть.
+  final _photoZoom = <int, double>{};
+  double _zoomOf(int i) => _photoZoom[i] ?? 1;
+
+  Future<void> _cropLast() async {
+    final last = _photos.length - 1;
+    final cropped = await cropPhoto(context, _applyZoom(last));
+    if (cropped != null && mounted) {
+      setState(() {
+        _photos[last] = cropped;
+        _photoZoom.remove(last);
+      });
+    }
+  }
+
+  Uint8List _applyZoom(int i) => zoomCenter(_photos[i], _zoomOf(i));
   var _busy = false;
 
   /// Показывать живую камеру (а не последний снимок).
@@ -74,26 +91,27 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
   Future<void> _submit({RecognitionProviderId? provider}) async {
     setState(() => _busy = true);
     try {
+      final photos = [for (var i = 0; i < _photos.length; i++) _applyZoom(i)];
       if (_diagnose) {
         final result = await ref.read(recognitionServiceProvider).diagnose([
-          _photos.first,
+          photos.first,
         ]);
         final record = await ref
             .read(gardenProvider.notifier)
-            .addDiagnosis(result, _photos.first);
+            .addDiagnosis(result, photos.first);
         if (!mounted) return;
         context.pushReplacement(
           '/diagnose/result',
-          extra: DiagnoseResultArgs(record: record, photo: _photos.first),
+          extra: DiagnoseResultArgs(record: record, photo: photos.first),
         );
         return;
       }
       final result = await ref
           .read(recognitionServiceProvider)
-          .identify(_photos, organ: _organ, provider: provider);
+          .identify(photos, provider: provider);
       final record = await ref
           .read(gardenProvider.notifier)
-          .addIdentification(result, _photos.first);
+          .addIdentification(result, photos.first);
       if (!mounted) return;
       final router = GoRouter.of(context);
       final used = provider ?? ref.read(settingsProvider).provider;
@@ -105,7 +123,7 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
       );
       router.pushReplacement(
         '/identify/result',
-        extra: IdentifyResultArgs(record: record, photo: _photos.first),
+        extra: IdentifyResultArgs(record: record, photo: photos.first),
       );
     } catch (e) {
       if (!mounted) return;
@@ -207,17 +225,22 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                       if (showLive)
                         LiveCamera(
                           key: _camera,
-                          overlay: Padding(
-                            padding: const EdgeInsets.all(28),
-                            child: CustomPaint(
-                              painter: _CornersPainter(Colors.white70),
-                            ),
+                          overlay: const FocusFrameOverlay(
+                            hint: 'Убедитесь, что растение находится в центре кадра',
                           ),
+                          onChanged: () => setState(() {}),
                           onUnavailable: (_) =>
                               setState(() => _cameraFailed = true),
                         )
                       else if (_photos.isNotEmpty)
-                        PlantImage.memory(_photos.last, radius: 0)
+                        // Предпросмотр снимка с тем же увеличением, что уйдёт на распознавание.
+                        ClipRect(
+                          child: AnimatedScale(
+                            scale: _zoomOf(_photos.length - 1),
+                            duration: const Duration(milliseconds: 120),
+                            child: PlantImage.memory(_photos.last, radius: 0),
+                          ),
+                        )
                       else
                         ColoredBox(
                           color: p.surface,
@@ -226,54 +249,85 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                             hint: p.inkSecondary,
                           ),
                         ),
-                      if (showLive && cam != null && cam.isReady)
+                      if (!_busy)
                         Positioned(
                           top: 12,
                           right: 12,
                           child: Column(
                             children: [
-                              if (cam.canSwitch)
+                              if (showLive) ...[
                                 _RoundIcon(
-                                  icon: Icons.cameraswitch_outlined,
-                                  tooltip: 'Сменить камеру',
-                                  onTap: () async {
-                                    await cam.switchCamera();
-                                    setState(() {});
-                                  },
-                                ),
-                              if (cam.hasFlash) ...[
-                                const SizedBox(height: 8),
-                                _RoundIcon(
-                                  icon: cam.flashOn
+                                  icon: cam?.flashOn ?? false
                                       ? Icons.flash_on
                                       : Icons.flash_off,
-                                  tooltip: 'Подсветка',
+                                  tooltip: 'Вспышка',
                                   onTap: () async {
+                                    if (cam == null || !cam.hasFlash) {
+                                      showToast(
+                                        context,
+                                        'Вспышка недоступна в браузере',
+                                      );
+                                      return;
+                                    }
                                     await cam.toggleFlash();
-                                    setState(() {});
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                              ] else if (_photos.isNotEmpty) ...[
+                                _RoundIcon(
+                                  icon: Icons.crop,
+                                  tooltip: 'Кадрировать',
+                                  onTap: _cropLast,
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              _RoundIcon(
+                                icon: Icons.question_mark_rounded,
+                                tooltip: 'Как снимать',
+                                onTap: () => showPhotoGuide(context),
+                              ),
+                              if (showLive) ...[
+                                const SizedBox(height: 8),
+                                _RoundIcon(
+                                  icon: Icons.cameraswitch_outlined,
+                                  tooltip: 'Фронтальная камера',
+                                  onTap: () async {
+                                    if (cam == null || !cam.canSwitch) {
+                                      showToast(context, 'Другой камеры нет');
+                                      return;
+                                    }
+                                    await cam.switchCamera();
                                   },
                                 ),
                               ],
                             ],
                           ),
                         ),
-                      if (!showLive && _photos.isNotEmpty && !_busy)
+                      if (!_busy &&
+                          ((showLive && cam != null && cam.isReady) ||
+                              (!showLive && _photos.isNotEmpty)))
                         Positioned(
-                          top: 12,
                           right: 12,
-                          child: _RoundIcon(
-                            icon: Icons.crop,
-                            tooltip: 'Кадрировать',
-                            onTap: () async {
-                              final last = _photos.length - 1;
-                              final cropped = await cropPhoto(
-                                context,
-                                _photos[last],
-                              );
-                              if (cropped != null && mounted) {
-                                setState(() => _photos[last] = cropped);
-                              }
-                            },
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 150),
+                              child: showLive
+                                  ? ZoomSlider(
+                                      value: cam!.zoom,
+                                      max: LiveCameraState.maxZoom,
+                                      onChanged: cam.setZoom,
+                                    )
+                                  : ZoomSlider(
+                                      value: _zoomOf(_photos.length - 1),
+                                      max: 3,
+                                      onChanged: (v) => setState(
+                                        () =>
+                                            _photoZoom[_photos.length - 1] = v,
+                                      ),
+                                    ),
+                            ),
                           ),
                         ),
                       if (_busy)
@@ -312,6 +366,16 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                                 ? null
                                 : (i) => setState(() {
                                     _photos.removeAt(i);
+                                    // Увеличение остаётся у своих снимков.
+                                    final shifted = {
+                                      for (final e in _photoZoom.entries)
+                                        if (e.key != i)
+                                          (e.key > i ? e.key - 1 : e.key):
+                                              e.value,
+                                    };
+                                    _photoZoom
+                                      ..clear()
+                                      ..addAll(shifted);
                                     if (_photos.isEmpty) _live = true;
                                   }),
                           ),
@@ -321,27 +385,6 @@ class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
                 ),
               ),
             ),
-            if (!_diagnose &&
-                settings.provider == RecognitionProviderId.plantNet)
-              SizedBox(
-                height: 56,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                  children: [
-                    for (final o in PlantOrgan.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          showCheckmark: false,
-                          label: Text(o.label),
-                          selected: _organ == o,
-                          onSelected: (_) => setState(() => _organ = o),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
               child: showLive
