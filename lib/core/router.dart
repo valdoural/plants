@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/discover/catalog.dart';
+import '../data/plant_problems.dart';
 import '../features/tools/tools_screens.dart';
 import '../features/diagnose/diagnose_result_screen.dart';
 import '../features/diagnose/diagnose_screen.dart';
+import '../features/diagnose/problems_screens.dart';
 import '../features/discover/discover_screens.dart';
 import '../features/garden/garden_screen.dart';
 import '../features/garden/plant_detail_screen.dart';
@@ -114,6 +116,21 @@ GoRouter buildRouter({required bool showOnboarding}) => GoRouter(
       builder: (_, s) => CatalogScreen(
         kind: CatalogKind.values.byName(s.pathParameters['kind']!),
       ),
+    ),
+    GoRoute(
+      path: '/diagnose/survey',
+      builder: (_, s) =>
+          CareSurveyScreen(plantId: s.uri.queryParameters['plant']),
+    ),
+    GoRoute(
+      path: '/problems/:part',
+      builder: (_, s) => ProblemsPartScreen(
+        part: PlantPart.values.byName(s.pathParameters['part']!),
+      ),
+    ),
+    GoRoute(
+      path: '/problem/:id',
+      builder: (_, s) => ProblemScreen(id: s.pathParameters['id']!),
     ),
     GoRoute(path: '/tools/light', builder: (_, _) => const LightMeterScreen()),
     GoRoute(

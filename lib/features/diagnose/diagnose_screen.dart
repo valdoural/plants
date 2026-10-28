@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import 'diagnose_result_screen.dart';
+import 'problems_screens.dart';
 
 /// Диагностика: фото больного растения → болезни и лечение (через Plant.id).
 class DiagnoseScreen extends ConsumerStatefulWidget {
@@ -58,6 +59,24 @@ class _DiagnoseScreenState extends ConsumerState<DiagnoseScreen> {
                 icon: const Icon(Icons.photo_camera_outlined),
                 label: const Text('Сфотографировать'),
               ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/diagnose/survey'),
+              icon: const Icon(Icons.checklist_rtl),
+              label: const Text('Без фото: ответить на вопросы'),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Справочник проблем',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Признаки, причины и лечение — по частям растения.',
+              style: TextStyle(fontSize: 14, color: p.inkSecondary),
+            ),
+            const SizedBox(height: 12),
+            const ProblemPartsGrid(),
             if (history.isNotEmpty) ...[
               const SizedBox(height: 32),
               const Text(

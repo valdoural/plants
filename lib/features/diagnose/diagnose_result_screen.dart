@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -134,6 +135,16 @@ class DiagnoseResultScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 if (args.record.plantId == null)
                   _AttachToPlant(record: args.record),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.checklist_rtl),
+                  label: const Text('Уточнить по уходу'),
+                  onPressed: () => context.push(
+                    args.record.plantId == null
+                        ? '/diagnose/survey'
+                        : '/diagnose/survey?plant=${args.record.plantId}',
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Результат автоматический и может ошибаться. При серьёзных проблемах проконсультируйтесь со специалистом.',

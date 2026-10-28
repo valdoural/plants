@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:leafy/data/care_advice.dart';
 import 'package:leafy/data/light_meter.dart';
 import 'package:leafy/data/models.dart';
+import 'package:leafy/data/plant_problems.dart';
 
 void main() {
   test('условия, папки и список желаний переживают сохранение', () {
@@ -187,5 +188,54 @@ void main() {
       repotVerdict({RepotSign.old, RepotSign.soil}, month: 5).urgency,
       RepotUrgency.soon,
     );
+  });
+
+  test('анкета: перелив и мягкий стебель → корневая гниль первой', () {
+    final factors = careFactors(
+      watering: WateringHabit.wet,
+      drainage: false,
+      light: LightSpot.bright,
+    );
+    expect(factors, {CareFactor.overwater, CareFactor.noDrainage});
+    final matches = matchProblems({
+      Symptom.yellowLower,
+      Symptom.stemSoft,
+      Symptom.droop,
+    }, factors);
+    expect(matches.first.problem.id, 'root-rot');
+    expect(matches.first.factors, factors);
+  });
+
+  test('анкета: паутинка у батареи → клещ; без признаков проблем нет', () {
+    final factors = careFactors(changes: {CareFactor.dryAir}, pestsSeen: true);
+    expect(
+      matchProblems({Symptom.webs}, factors).first.problem.id,
+      'spider-mite',
+    );
+    expect(matchProblems({}, factors), isEmpty);
+  });
+
+  test('справочник: у каждой проблемы есть признаки и шаги лечения', () {
+    final ids = <String>{};
+    for (final p in plantProblems) {
+      expect(p.signs, isNotEmpty, reason: p.id);
+      expect(p.fix, isNotEmpty, reason: p.id);
+      expect(ids.add(p.id), isTrue, reason: 'повтор ${p.id}');
+    }
+    // Каждый признак анкеты ведёт хотя бы к одной проблеме.
+    for (final s in Symptom.values) {
+      expect(
+        plantProblems.any((p) => p.signs.contains(s)),
+        isTrue,
+        reason: s.name,
+      );
+    }
+    for (final part in PlantPart.values) {
+      expect(
+        plantProblems.any((p) => p.part == part),
+        isTrue,
+        reason: part.name,
+      );
+    }
   });
 }
