@@ -272,3 +272,36 @@ class _PressScaleState extends State<PressScale> {
     );
   }
 }
+
+/// Диалог с одним полем ввода. Возвращает введённый текст без пробелов по краям или null.
+Future<String?> askText(
+  BuildContext context,
+  String title, {
+  String initial = '',
+  String? hint,
+}) {
+  final c = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: c,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: InputDecoration(hintText: hint),
+        onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, c.text.trim()),
+          child: const Text('Сохранить'),
+        ),
+      ],
+    ),
+  );
+}

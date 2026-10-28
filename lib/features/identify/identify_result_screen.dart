@@ -8,6 +8,7 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/care_text_ru.dart';
 import '../../data/models.dart';
+import '../discover/discover_screens.dart';
 import '../garden/add_plant_sheet.dart';
 import 'species_screen.dart';
 
@@ -227,8 +228,18 @@ class IdentifyResultScreen extends ConsumerWidget {
                     onPressed: () => open(top),
                     child: const Text('Подробнее о виде'),
                   ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: () async {
+                      final c = await pickSpecies(context, ref);
+                      if (c != null && context.mounted) await add(c);
+                    },
+                    child: const Text(
+                      'Не то растение? Выбрать вид по названию',
+                    ),
+                  ),
                   if (record.candidates.length > 1) ...[
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     const Text(
                       'Другие варианты',
                       style: TextStyle(

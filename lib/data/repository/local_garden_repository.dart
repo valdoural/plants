@@ -21,6 +21,8 @@ class LocalGardenRepository implements GardenRepository {
   static const _notes = 'garden.notes';
   static const _idents = 'garden.identifications';
   static const _diags = 'garden.diagnoses';
+  static const _collections = 'garden.collections';
+  static const _wishlist = 'garden.wishlist';
 
   List<Map<String, dynamic>> _read(String key) {
     final raw = _prefs.getString(key);
@@ -58,6 +60,9 @@ class LocalGardenRepository implements GardenRepository {
     notes: _read(_notes).map(Note.fromJson).toList(),
     identifications: _read(_idents).map(IdentificationRecord.fromJson).toList(),
     diagnoses: _read(_diags).map(DiagnosisRecord.fromJson).toList(),
+    collections: _read(_collections).map(PlantCollection.fromJson).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
+    wishlist: _read(_wishlist).map(WishItem.fromJson).toList(),
   );
 
   @override
@@ -98,6 +103,21 @@ class LocalGardenRepository implements GardenRepository {
   @override
   Future<void> deleteDiagnosis(String id) =>
       _delete(_diags, (e) => e['id'] == id);
+
+  @override
+  Future<void> saveCollection(PlantCollection collection) =>
+      _upsert(_collections, collection.toJson());
+
+  @override
+  Future<void> deleteCollection(String id) =>
+      _delete(_collections, (e) => e['id'] == id);
+
+  @override
+  Future<void> saveWish(WishItem item) => _upsert(_wishlist, item.toJson());
+
+  @override
+  Future<void> deleteWish(String id) =>
+      _delete(_wishlist, (e) => e['id'] == id);
 
   @override
   Future<String> storePhoto(Uint8List jpegBytes) async =>

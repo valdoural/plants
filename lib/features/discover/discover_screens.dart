@@ -9,12 +9,30 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/discover/catalog.dart';
 import '../../data/discover/discover_providers.dart';
+import '../../data/discover/inat.dart';
+import '../../data/models.dart';
+import '../../data/garden_controller.dart';
 import '../garden/add_plant_sheet.dart';
 import 'discover_widgets.dart';
 
+/// Выбор вида по названию: открывает поиск и возвращает полные сведения о выбранном виде.
+/// Нужен для «Это не то растение» — когда распознавание ошиблось.
+Future<PlantCandidate?> pickSpecies(BuildContext context, WidgetRef ref) async {
+  final taxon = await context.push<InatTaxon>('/search?pick=1');
+  if (taxon == null) return null;
+  try {
+    return (await ref.read(taxonDetailProvider(taxon.id).future)).toCandidate();
+  } catch (_) {
+    return taxon.toCandidate();
+  }
+}
+
 /// Поиск растения по названию (русскому или латинскому).
+/// В режиме [pick] касание возвращает вид вызвавшему экрану.
 class PlantSearchScreen extends ConsumerStatefulWidget {
-  const PlantSearchScreen({super.key});
+  const PlantSearchScreen({super.key, this.pick = false});
+
+  final bool pick;
 
   @override
   ConsumerState<PlantSearchScreen> createState() => _PlantSearchScreenState();
@@ -47,7 +65,9 @@ class _PlantSearchScreenState extends ConsumerState<PlantSearchScreen> {
         ? null
         : ref.watch(plantSearchProvider(_query));
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск растений')),
+      appBar: AppBar(
+        title: Text(widget.pick ? 'Выберите вид' : 'Поиск растений'),
+      ),
       body: MaxWidth(
         maxWidth: 820,
         child: ListView(
@@ -95,7 +115,9 @@ class _PlantSearchScreenState extends ConsumerState<PlantSearchScreen> {
                           for (final t in list)
                             InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () => context.push('/taxon/${t.id}'),
+                              onTap: () => widget.pick
+                                  ? context.pop(t)
+                                  : context.push('/taxon/${t.id}'),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 8,
@@ -380,6 +402,8 @@ class TaxonScreen extends ConsumerWidget {
                 child: const Text('Добавить в сад'),
               ),
               const SizedBox(height: 10),
+              _WishButton(taxon: t),
+              const SizedBox(height: 10),
               OutlinedButton(
                 onPressed: () => openLink(t.wikipediaUrl ?? t.inatUrl),
                 child: const Text('Подробнее в энциклопедии'),
@@ -438,6 +462,43 @@ class TaxonScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// «Хочу вырастить»: добавляет вид в список желаний или убирает из него.
+class _WishButton extends ConsumerWidget {
+  const _WishButton({required this.taxon});
+
+  final InatTaxon taxon;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wished = ref.watch(gardenProvider).value?.isWished(taxon.id) ?? false;
+    return OutlinedButton.icon(
+      onPressed: () async {
+        final added = await ref
+            .read(gardenProvider.notifier)
+            .toggleWish(
+              taxonId: taxon.id,
+              scientificName: taxon.name,
+              commonName: taxon.commonName,
+              photoUrl: taxon.photoUrl,
+            );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                added
+                    ? 'В списке желаний — он в разделе «Мой сад»'
+                    : 'Убрано из списка желаний',
+              ),
+            ),
+          );
+        }
+      },
+      icon: Icon(wished ? Icons.bookmark : Icons.bookmark_border),
+      label: Text(wished ? 'В списке желаний' : 'Хочу вырастить'),
     );
   }
 }

@@ -183,6 +183,84 @@ enum PlantLocation {
   final String label;
 }
 
+enum PlantAge {
+  seedling('Сеянец или черенок'),
+  young('Молодое'),
+  mature('Взрослое'),
+  old('Старое, крупное');
+
+  const PlantAge(this.label);
+  final String label;
+}
+
+/// Освещение на месте, где стоит растение.
+enum PlantLight {
+  sun('Прямое солнце', 'Южное окно, солнце больше 4 часов'),
+  bright('Яркий рассеянный', 'Восток или запад, рядом с окном'),
+  partial('Полутень', '1–2 метра от окна'),
+  shade('Тень', 'Северное окно или глубина комнаты');
+
+  const PlantLight(this.label, this.hint);
+  final String label;
+  final String hint;
+}
+
+enum PotType {
+  plastic('Пластик'),
+  glazed('Керамика с глазурью'),
+  terracotta('Терракота без глазури'),
+  ground('В грунте');
+
+  const PotType(this.label);
+  final String label;
+}
+
+/// Условия растения: возраст, свет и горшок. Все поля необязательны.
+class PlantConditions {
+  const PlantConditions({
+    this.age,
+    this.light,
+    this.pot,
+    this.drainage,
+    this.potCm,
+  });
+
+  final PlantAge? age;
+  final PlantLight? light;
+  final PotType? pot;
+
+  /// Есть ли дренажные отверстия.
+  final bool? drainage;
+
+  /// Диаметр горшка, см.
+  final int? potCm;
+
+  bool get isEmpty =>
+      age == null &&
+      light == null &&
+      pot == null &&
+      drainage == null &&
+      potCm == null;
+
+  Map<String, dynamic> toJson() => {
+    'age': age?.name,
+    'light': light?.name,
+    'pot': pot?.name,
+    'drainage': drainage,
+    'pot_cm': potCm,
+  };
+
+  factory PlantConditions.fromJson(Map<String, dynamic>? j) => j == null
+      ? const PlantConditions()
+      : PlantConditions(
+          age: PlantAge.values.asNameMap()[j['age']],
+          light: PlantLight.values.asNameMap()[j['light']],
+          pot: PotType.values.asNameMap()[j['pot']],
+          drainage: j['drainage'] as bool?,
+          potCm: (j['pot_cm'] as num?)?.toInt(),
+        );
+}
+
 /// Растение в «Моём саду».
 class Plant {
   const Plant({
@@ -194,6 +272,8 @@ class Plant {
     this.photoUrl,
     this.location = PlantLocation.indoor,
     this.species,
+    this.conditions = const PlantConditions(),
+    this.collectionIds = const [],
   });
 
   final String id;
@@ -206,11 +286,17 @@ class Plant {
 
   /// Снимок данных о виде на момент добавления.
   final PlantCandidate? species;
+  final PlantConditions conditions;
+
+  /// Пользовательские папки, в которые входит растение.
+  final List<String> collectionIds;
 
   Plant copyWith({
     String? nickname,
     String? photoUrl,
     PlantLocation? location,
+    PlantConditions? conditions,
+    List<String>? collectionIds,
   }) => Plant(
     id: id,
     nickname: nickname ?? this.nickname,
@@ -220,6 +306,22 @@ class Plant {
     location: location ?? this.location,
     createdAt: createdAt,
     species: species,
+    conditions: conditions ?? this.conditions,
+    collectionIds: collectionIds ?? this.collectionIds,
+  );
+
+  /// «Это не то растение»: тот же экземпляр, другой вид.
+  Plant withSpecies(PlantCandidate s) => Plant(
+    id: id,
+    nickname: nickname,
+    scientificName: s.scientificName,
+    commonName: s.commonNames.firstOrNull,
+    photoUrl: photoUrl ?? s.imageUrls.firstOrNull,
+    location: location,
+    createdAt: createdAt,
+    species: s,
+    conditions: conditions,
+    collectionIds: collectionIds,
   );
 
   Map<String, dynamic> toJson() => {
@@ -231,6 +333,8 @@ class Plant {
     'location': location.name,
     'created_at': createdAt.toUtc().toIso8601String(),
     'species': species?.toJson(),
+    'conditions': conditions.toJson(),
+    'collection_ids': collectionIds,
   };
 
   factory Plant.fromJson(Map<String, dynamic> j) => Plant(
@@ -247,6 +351,78 @@ class Plant {
         : PlantCandidate.fromJson(
             Map<String, dynamic>.from(j['species'] as Map),
           ),
+    conditions: PlantConditions.fromJson(
+      j['conditions'] == null
+          ? null
+          : Map<String, dynamic>.from(j['conditions'] as Map),
+    ),
+    collectionIds: _strings(j['collection_ids']),
+  );
+}
+
+/// Своя папка в саду («Кухня», «Суккуленты»…).
+class PlantCollection {
+  const PlantCollection({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final DateTime createdAt;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'created_at': createdAt.toUtc().toIso8601String(),
+  };
+
+  factory PlantCollection.fromJson(Map<String, dynamic> j) => PlantCollection(
+    id: j['id'] as String,
+    name: j['name'] as String,
+    createdAt: _date(j['created_at']) ?? DateTime.now(),
+  );
+}
+
+/// Растение из списка желаний — вид, который хочется вырастить.
+class WishItem {
+  const WishItem({
+    required this.id,
+    required this.scientificName,
+    required this.createdAt,
+    this.taxonId,
+    this.commonName,
+    this.photoUrl,
+  });
+
+  final String id;
+  final int? taxonId;
+  final String scientificName;
+  final String? commonName;
+  final String? photoUrl;
+  final DateTime createdAt;
+
+  String get displayName => commonName == null || commonName!.isEmpty
+      ? scientificName
+      : _capitalize(commonName!);
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'taxon_id': taxonId,
+    'scientific_name': scientificName,
+    'common_name': commonName,
+    'photo_url': photoUrl,
+    'created_at': createdAt.toUtc().toIso8601String(),
+  };
+
+  factory WishItem.fromJson(Map<String, dynamic> j) => WishItem(
+    id: j['id'] as String,
+    taxonId: (j['taxon_id'] as num?)?.toInt(),
+    scientificName: j['scientific_name'] as String,
+    commonName: j['common_name'] as String?,
+    photoUrl: j['photo_url'] as String?,
+    createdAt: _date(j['created_at']) ?? DateTime.now(),
   );
 }
 
@@ -481,6 +657,8 @@ class GardenData {
     this.notes = const [],
     this.identifications = const [],
     this.diagnoses = const [],
+    this.collections = const [],
+    this.wishlist = const [],
   });
 
   final List<Plant> plants;
@@ -488,6 +666,10 @@ class GardenData {
   final List<Note> notes;
   final List<IdentificationRecord> identifications;
   final List<DiagnosisRecord> diagnoses;
+  final List<PlantCollection> collections;
+  final List<WishItem> wishlist;
+
+  bool isWished(int taxonId) => wishlist.any((w) => w.taxonId == taxonId);
 
   Plant? plant(String id) => plants.where((p) => p.id == id).firstOrNull;
   List<CareTask> tasksFor(String plantId) =>

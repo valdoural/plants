@@ -24,6 +24,12 @@ abstract interface class GardenRepository {
   Future<void> saveDiagnosis(DiagnosisRecord record);
   Future<void> deleteDiagnosis(String id);
 
+  Future<void> saveCollection(PlantCollection collection);
+  Future<void> deleteCollection(String id);
+
+  Future<void> saveWish(WishItem item);
+  Future<void> deleteWish(String id);
+
   /// Сохраняет фото и возвращает ссылку (https:// или data:).
   Future<String> storePhoto(Uint8List jpegBytes);
 }

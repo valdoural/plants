@@ -11,7 +11,9 @@ import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
 import '../../data/models.dart';
 import '../identify/species_screen.dart';
+import '../discover/discover_screens.dart';
 import 'add_plant_sheet.dart';
+import 'plant_conditions.dart';
 import 'task_tile.dart';
 
 /// Растение из сада: вкладки «Уход», «Дневник», «О растении».
@@ -213,7 +215,11 @@ class _PlantMenu extends ConsumerWidget {
       onSelected: (v) async {
         switch (v) {
           case 'rename':
-            final name = await _ask(context, 'Новое имя', plant.nickname);
+            final name = await askText(
+              context,
+              'Новое имя',
+              initial: plant.nickname,
+            );
             if (name != null && name.isNotEmpty) {
               await garden.updatePlant(plant.copyWith(nickname: name));
             }
@@ -224,6 +230,20 @@ class _PlantMenu extends ConsumerWidget {
                 plant.copyWith(photoUrl: await garden.storePhoto(bytes)),
               );
             }
+          case 'species':
+            final c = await pickSpecies(context, ref);
+            if (c != null) {
+              await garden.updatePlant(plant.withSpecies(c));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Вид изменён: ${c.displayName}')),
+                );
+              }
+            }
+          case 'folders':
+            await _pickFolders(context, ref, plant);
+          case 'conditions':
+            await showConditionsSheet(context, ref, plant);
           case 'delete':
             final ok = await showDialog<bool>(
               context: context,
@@ -253,31 +273,91 @@ class _PlantMenu extends ConsumerWidget {
       itemBuilder: (_) => const [
         PopupMenuItem(value: 'rename', child: Text('Переименовать')),
         PopupMenuItem(value: 'photo', child: Text('Сменить фото')),
+        PopupMenuItem(value: 'species', child: Text('Это не тот вид')),
+        PopupMenuItem(value: 'folders', child: Text('Папки')),
+        PopupMenuItem(value: 'conditions', child: Text('Условия и горшок')),
         PopupMenuItem(value: 'delete', child: Text('Удалить из сада')),
       ],
     );
   }
 }
 
-Future<String?> _ask(BuildContext context, String title, String initial) {
-  final c = TextEditingController(text: initial);
-  return showDialog<String>(
+/// Выбор папок для растения; можно сразу создать новую.
+Future<void> _pickFolders(
+  BuildContext context,
+  WidgetRef ref,
+  Plant plant,
+) async {
+  final garden = ref.read(gardenProvider.notifier);
+  final selected = {...plant.collectionIds};
+  final ok = await showModalBottomSheet<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(controller: c, autofocus: true),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, c.text.trim()),
-          child: const Text('Сохранить'),
-        ),
-      ],
+    builder: (ctx) => Consumer(
+      builder: (ctx, ref, _) {
+        final collections =
+            ref.watch(gardenProvider).value?.collections ?? const [];
+        return StatefulBuilder(
+          builder: (ctx, setState) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Text(
+                      'Папки',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  for (final c in collections)
+                    CheckboxListTile(
+                      value: selected.contains(c.id),
+                      title: Text(c.name),
+                      onChanged: (v) => setState(
+                        () => v == true
+                            ? selected.add(c.id)
+                            : selected.remove(c.id),
+                      ),
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.create_new_folder_outlined),
+                    title: const Text('Новая папка'),
+                    onTap: () async {
+                      final name = await askText(
+                        ctx,
+                        'Новая папка',
+                        hint: 'Например: Кухня',
+                      );
+                      if (name == null || name.isEmpty) return;
+                      final c = await garden.addCollection(name);
+                      setState(() => selected.add(c.id));
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Готово'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     ),
   );
+  if (ok == true) {
+    final latest = ref.read(gardenProvider).value?.plant(plant.id) ?? plant;
+    await garden.updatePlant(latest.copyWith(collectionIds: selected.toList()));
+  }
 }
 
 class _CareTab extends ConsumerWidget {
@@ -341,6 +421,8 @@ class _CareTab extends ConsumerWidget {
                 ),
             ],
           ),
+        const SizedBox(height: 20),
+        PlantConditionsCard(plant: plant, tasks: tasks),
       ],
     );
   }

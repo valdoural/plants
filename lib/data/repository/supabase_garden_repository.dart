@@ -31,6 +31,8 @@ class SupabaseGardenRepository implements GardenRepository {
       _select('notes'),
       _select('identifications'),
       _select('diagnoses'),
+      _select('collections'),
+      _select('wishlist'),
     ]);
     return GardenData(
       plants: results[0].map(Plant.fromJson).toList(),
@@ -38,6 +40,8 @@ class SupabaseGardenRepository implements GardenRepository {
       notes: results[2].map(Note.fromJson).toList(),
       identifications: results[3].map(IdentificationRecord.fromJson).toList(),
       diagnoses: results[4].map(DiagnosisRecord.fromJson).toList(),
+      collections: results[5].reversed.map(PlantCollection.fromJson).toList(),
+      wishlist: results[6].map(WishItem.fromJson).toList(),
     );
   }
 
@@ -79,6 +83,19 @@ class SupabaseGardenRepository implements GardenRepository {
 
   @override
   Future<void> deleteDiagnosis(String id) => _delete('diagnoses', id);
+
+  @override
+  Future<void> saveCollection(PlantCollection collection) =>
+      _upsert('collections', collection.toJson());
+
+  @override
+  Future<void> deleteCollection(String id) => _delete('collections', id);
+
+  @override
+  Future<void> saveWish(WishItem item) => _upsert('wishlist', item.toJson());
+
+  @override
+  Future<void> deleteWish(String id) => _delete('wishlist', id);
 
   @override
   Future<String> storePhoto(Uint8List jpegBytes) async {

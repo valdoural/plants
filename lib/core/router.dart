@@ -103,7 +103,11 @@ GoRouter buildRouter({required bool showOnboarding}) => GoRouter(
       path: '/settings',
       builder: (_, _) => const _Narrow(child: SettingsScreen()),
     ),
-    GoRoute(path: '/search', builder: (_, _) => const PlantSearchScreen()),
+    GoRoute(
+      path: '/search',
+      builder: (_, s) =>
+          PlantSearchScreen(pick: s.uri.queryParameters['pick'] == '1'),
+    ),
     GoRoute(
       path: '/catalog/:kind',
       builder: (_, s) => CatalogScreen(
