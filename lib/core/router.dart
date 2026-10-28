@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/discover/catalog.dart';
+import '../features/tools/tools_screens.dart';
 import '../features/diagnose/diagnose_result_screen.dart';
 import '../features/diagnose/diagnose_screen.dart';
 import '../features/discover/discover_screens.dart';
@@ -114,6 +115,12 @@ GoRouter buildRouter({required bool showOnboarding}) => GoRouter(
         kind: CatalogKind.values.byName(s.pathParameters['kind']!),
       ),
     ),
+    GoRoute(path: '/tools/light', builder: (_, _) => const LightMeterScreen()),
+    GoRoute(
+      path: '/tools/water',
+      builder: (_, _) => const WaterCalculatorScreen(),
+    ),
+    GoRoute(path: '/tools/repot', builder: (_, _) => const RepotCheckScreen()),
     GoRoute(
       path: '/taxon/:id',
       builder: (_, s) => TaxonScreen(id: int.parse(s.pathParameters['id']!)),

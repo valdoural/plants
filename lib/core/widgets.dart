@@ -305,3 +305,120 @@ Future<String?> askText(
     ),
   );
 }
+
+/// Заголовок и ряд чипов с одиночным выбором; повторное касание снимает выбор.
+class ChoiceGroup<T> extends StatelessWidget {
+  const ChoiceGroup({
+    super.key,
+    required this.title,
+    required this.values,
+    required this.selected,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final String title;
+  final List<T> values;
+  final T? selected;
+  final String Function(T) label;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final v in values)
+            ChoiceChip(
+              label: Text(label(v)),
+              selected: v == selected,
+              onSelected: (on) => onChanged(on ? v : null),
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Плитка-переход: значок в квадрате, заголовок, подпись, стрелка. Мягко сжимается при нажатии.
+class NavTile extends StatelessWidget {
+  const NavTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return PressScale(
+      child: Material(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: p.surfaceHigh,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: p.accent),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: p.inkSecondary),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: p.inkSecondary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

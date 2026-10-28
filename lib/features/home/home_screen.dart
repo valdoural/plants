@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../tools/tools_screens.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -85,6 +86,8 @@ class HomeScreen extends ConsumerWidget {
     final tip = seasonalTip(DateTime.now());
     final seasonal = _SeasonalTip(tip: tip);
 
+    const tools = [_Heading('Инструменты'), ToolsGrid()];
+
     final left = <Widget>[
       ...tasks,
       if (tasks.isNotEmpty) gap(),
@@ -93,6 +96,8 @@ class HomeScreen extends ConsumerWidget {
       ...week,
       if (week.isNotEmpty) gap(),
       seasonal,
+      gap(),
+      ...tools,
     ];
     final right = <Widget>[
       const PlantSearchLauncher(),
@@ -146,6 +151,8 @@ class HomeScreen extends ConsumerWidget {
                     ...week,
                     if (week.isNotEmpty) gap(),
                     seasonal,
+                    gap(),
+                    ...tools,
                   ],
                 ),
               ),

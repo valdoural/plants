@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/settings.dart';
+import '../../core/widgets.dart';
 import '../../data/garden_controller.dart';
+import '../tools/tools_screens.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -15,14 +17,11 @@ class MoreScreen extends ConsumerWidget {
     final data = ref.watch(gardenProvider).value;
 
     Widget tile(IconData icon, String title, String? subtitle, String route) =>
-        Card(
-          child: ListTile(
-            leading: Icon(icon),
-            title: Text(title),
-            subtitle: subtitle == null ? null : Text(subtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(route),
-          ),
+        NavTile(
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+          onTap: () => context.push(route),
         );
 
     return Scaffold(
@@ -36,14 +35,14 @@ class MoreScreen extends ConsumerWidget {
             '${data?.dueTasks.length ?? 0} на сегодня',
             '/reminders',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           tile(
             Icons.history,
             'История распознаваний',
             '${data?.identifications.length ?? 0} записей',
             '/history',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           tile(
             Icons.settings_outlined,
             'Настройки',
@@ -51,6 +50,15 @@ class MoreScreen extends ConsumerWidget {
             '/settings',
           ),
           const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Инструменты',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const ToolsGrid(),
+          const SizedBox(height: 32),
           Center(
             child: Text(
               'Leafy · личный помощник для растений',
